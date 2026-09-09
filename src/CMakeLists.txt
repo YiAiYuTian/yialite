@@ -5,6 +5,8 @@ else()
   target_compile_definitions(${PROJECT_NAME} PRIVATE YIALITE_EXPORTS YIALITE_SHARED)
 endif()
 
+add_compile_options(${PROJECT_NAME} PRIVATE $<$<CXX_COMPILER_ID:MSVC>:/utf-8>)
+
 add_library(YiaLite::YiaLite ALIAS ${PROJECT_NAME})
 
 if(MSVC AND DEFINED CRT_LINKAGE)

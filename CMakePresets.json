@@ -1,5 +1,5 @@
-{
-  "version": 8,
+﻿{
+  "version": 9,
   "cmakeMinimumRequired": {
     "major": 3,
     "minor": 23,
@@ -214,76 +214,90 @@
     {
       "name": "msvc-debug",
       "configurePreset": "msvc-dynamic",
-      "configuration": "Debug"
+      "configuration": "Debug",
+      "jobs" : 0
     },
     {
       "name": "msvc-release",
       "configurePreset": "msvc-dynamic",
-      "configuration": "Release"
+      "configuration": "Release",
+      "jobs": 0
     },
     {
       "name": "msvc-debug-static",
       "configurePreset": "msvc-static",
-      "configuration": "Debug"
+      "configuration": "Debug",
+      "jobs": 0
     },
     {
       "name": "msvc-release-static",
       "configurePreset": "msvc-static",
-      "configuration": "Release"
+      "configuration": "Release",
+      "jobs": 0
     },
     {
       "name": "msvc-debug-static-md",
       "configurePreset": "msvc-static-md",
-      "configuration": "Debug"
+      "configuration": "Debug",
+      "jobs": 0
     },
     {
       "name": "msvc-release-static-md",
       "configurePreset": "msvc-static-md",
-      "configuration": "Release"
+      "configuration": "Release",
+      "jobs": 0
     },
 
 
     {
       "name": "mingw-debug",
       "configurePreset": "mingw-debug",
-      "configuration": "Debug"
+      "configuration": "Debug",
+      "jobs": 0
     },
     {
       "name": "mingw-release",
       "configurePreset": "mingw-release",
-      "configuration": "Release"
+      "configuration": "Release",
+      "jobs": 0
     },
     {
       "name": "mingw-debug-static-md",
       "configurePreset": "mingw-debug-static-md",
-      "configuration": "Debug"
+      "configuration": "Debug",
+      "jobs": 0
     },
     {
       "name": "mingw-release-static-md",
       "configurePreset": "mingw-release-static-md",
-      "configuration": "Release"
+      "configuration": "Release",
+      "jobs": 0
     },
 
 
     {
       "name": "clang-debug",
       "configurePreset": "clang-debug",
-      "configuration": "Debug"
+      "configuration": "Debug",
+      "jobs": 0
     },
     {
       "name": "clang-release",
       "configurePreset": "clang-release",
-      "configuration": "Release"
+      "configuration": "Release",
+      "jobs": 0
     },
     {
       "name": "clang-debug-static-md",
       "configurePreset": "clang-debug-static-md",
-      "configuration": "Debug"
+      "configuration": "Debug",
+      "jobs": 0
     },
     {
       "name": "clang-release-static-md",
       "configurePreset": "clang-release-static-md",
-      "configuration": "Release"
+      "configuration": "Release",
+      "jobs": 0
     }
   ]
 }

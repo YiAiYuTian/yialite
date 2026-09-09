@@ -18,6 +18,7 @@ install(
   FILES_MATCHING PATTERN "*.h"
   PATTERN "thirdparty" EXCLUDE
   PATTERN "backends" EXCLUDE
+  PATTERN "pch.h" EXCLUDE
   PATTERN "logger.h" EXCLUDE
   PATTERN "mem_pool.h" EXCLUDE
 )
