@@ -1,9 +1,56 @@
 @PACKAGE_INIT@
 
-# YiaLite is a shared library (DLL). All third-party dependencies
-# (SDL3, spdlog, vorbis, ogg) are statically linked inside YiaLite.dll.
-# Only need YiaLite.lib (import lib) — no extra find_dependency calls.
+# ---------------------------------------------------------------------------
+#  yialite package configuration
+#
+#  Imported targets:
+#     yialite::core     low level library (window / input / renderer / audio)
+#     yialite::engine   engine layer built on top of yialite::core
+#
+#  Only need:
+#
+#     find_package(yialite REQUIRED)
+#     target_link_libraries(my_app PRIVATE yialite::engine)
+#
+#  Third-party dependencies (SDL3, spdlog, ogg, vorbis, imgui, miniaudio, stb)
+#  are compiled into yialite_core. Their archives are installed next to it and
+#  are chained into yialite::core below, together with the system import
+#  libraries they require, so no extra find_dependency() call is needed.
+# ---------------------------------------------------------------------------
 
-include("${CMAKE_CURRENT_LIST_DIR}/YiaLiteTargets.cmake")
+set(_yia_find_dependencies "@YIA_BUNDLED_FIND_DEPENDENCIES@")
 
-check_required_components(YiaLite)
+if(_yia_find_dependencies)
+  include(CMakeFindDependencyMacro)
+  foreach(_yia_dependency IN LISTS _yia_find_dependencies)
+    find_dependency(${_yia_dependency})
+  endforeach()
+endif()
+
+include("${CMAKE_CURRENT_LIST_DIR}/yialiteTargets.cmake")
+
+set(_yia_bundled_archives "@YIA_BUNDLED_ARCHIVES@")
+set(_yia_system_libs "@YIA_BUNDLED_SYSTEM_LIBS@")
+
+if(_yia_bundled_archives OR _yia_system_libs)
+  set_and_check(_yia_libdir "@PACKAGE_CMAKE_INSTALL_LIBDIR@")
+
+  set(_yia_extra_link_libraries "")
+  foreach(_yia_archive IN LISTS _yia_bundled_archives)
+    list(APPEND _yia_extra_link_libraries "${_yia_libdir}/${_yia_archive}")
+  endforeach()
+  list(APPEND _yia_extra_link_libraries ${_yia_system_libs})
+
+  set_property(TARGET yialite::core APPEND PROPERTY
+    INTERFACE_LINK_LIBRARIES ${_yia_extra_link_libraries})
+endif()
+
+unset(_yia_bundled_archives)
+unset(_yia_system_libs)
+unset(_yia_find_dependencies)
+unset(_yia_dependency)
+unset(_yia_libdir)
+unset(_yia_archive)
+unset(_yia_extra_link_libraries)
+
+check_required_components(yialite)

@@ -1,5 +1,4 @@
-﻿#include "pch.h"
-#include "../../utils/memory/allocator.h"
+﻿#include "../../utils/memory/allocator.h"
 
 static void* yialite_stb_malloc(size_t size)
 {

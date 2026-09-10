@@ -1,211 +1,92 @@
 ﻿{
-  "version": 9,
+  "version": 3,
   "cmakeMinimumRequired": {
     "major": 3,
-    "minor": 23,
+    "minor": 21,
     "patch": 0
   },
 
   "configurePresets": [
     {
-      "name": "base-user",
+      "name": "base",
       "hidden": true,
       "cacheVariables": {
-        "CMAKE_CXX_STANDARD": "23",
-
-        "LIBRARY_LINKAGE": "dynamic",
-        "CRT_LINKAGE": "dynamic"
+        "CMAKE_C_STANDARD": "11",
+        "CMAKE_CXX_STANDARD": "23"
       }
     },
+
     {
-      "name": "msvc-user",
+      "name": "ninja-base",
       "hidden": true,
+      "inherits": "base",
+      "generator": "Ninja",
+      "cacheVariables": {
+        "CMAKE_EXPORT_COMPILE_COMMANDS": "ON"
+      }
+    },
+
+    {
+      "name": "msvc",
+      "displayName": "MSVC - Visual Studio generator, Debug and Release in one tree",
+      "inherits": "base",
       "generator": "Visual Studio 18 2026",
       "architecture": "x64",
-      "inherits": "base-user"
-    },
-    {
-      "name": "mingw-user",
-      "hidden": true,
-      "generator": "Unix Makefiles",
-      "inherits": "base-user",
-      "environment": {
-        "PATH": "D:/msys64/mingw64/bin;D:/msys64/usr/bin"
-      },
+      "binaryDir": "${sourceDir}/build/msvc",
       "cacheVariables": {
+        "CMAKE_INSTALL_PREFIX": "${sourceDir}/install/msvc"
+      }
+    },
+
+    {
+      "name": "mingw",
+      "displayName": "MinGW-w64 - Ninja, Debug (gcc and g++ must be on PATH)",
+      "inherits": "ninja-base",
+      "binaryDir": "${sourceDir}/build/mingw",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Debug",
         "CMAKE_C_COMPILER": "gcc",
         "CMAKE_CXX_COMPILER": "g++",
-        "CMAKE_MAKE_PROGRAM": "mingw32-make",
-        "VCPKG_APPLOCAL_DEPS": "OFF"
-      }
-    },
-    {
-      "name": "clang-user",
-      "hidden": true,
-      "generator": "Unix Makefiles",
-      "inherits": "base-user",
-      "environment": {
-        "PATH": "D:/msys64/clang64/bin;D:/msys64/usr/bin"
-      },
-      "cacheVariables": {
-        "CMAKE_C_COMPILER": "clang",
-        "CMAKE_CXX_COMPILER": "clang++",
-        "CMAKE_MAKE_PROGRAM": "mingw32-make",
-        "VCPKG_APPLOCAL_DEPS": "OFF"
+        "CMAKE_INSTALL_PREFIX": "${sourceDir}/install/mingw"
       }
     },
 
-
-    {
-      "name": "msvc-dynamic",
-      "binaryDir": "${sourceDir}/build/msvc-dynamic",
-      "inherits": "msvc-user",
-      "cacheVariables": {
-        "CMAKE_INSTALL_PREFIX": "${sourceDir}/install/${presetName}",
-        "VCPKG_TARGET_TRIPLET": "x64-windows",
-        
-        "LIBRARY_LINKAGE": "dynamic",
-        "CRT_LINKAGE": "dynamic"
-      }
-    },
-    {
-      "name": "msvc-static",
-      "binaryDir": "${sourceDir}/build/msvc-static",
-      "inherits": "msvc-user",
-      "cacheVariables": {
-        "CMAKE_INSTALL_PREFIX": "${sourceDir}/install/${presetName}",
-        "CMAKE_C_FLAGS_DEBUG": "/MTd",
-        "CMAKE_CXX_FLAGS_DEBUG": "/MTd",
-        "CMAKE_C_FLAGS_RELEASE": "/MT",
-        "CMAKE_CXX_FLAGS_RELEASE": "/MT",
-        "VCPKG_TARGET_TRIPLET": "x64-windows-static",
-
-        "LIBRARY_LINKAGE": "static",
-        "CRT_LINKAGE": "static"
-      }
-    },
-    {
-      "name": "msvc-static-md",
-      "binaryDir": "${sourceDir}/build/msvc-static-md",
-      "inherits": "msvc-user",
-      "cacheVariables": {
-        "CMAKE_INSTALL_PREFIX": "${sourceDir}/install/${presetName}",
-        "VCPKG_TARGET_TRIPLET": "x64-windows-static-md",
-
-        "LIBRARY_LINKAGE": "static",
-        "CRT_LINKAGE": "dynamic"
-      }
-    },
-
-
-    {
-      "name": "mingw-debug",
-      "binaryDir": "${sourceDir}/build/mingw-debug",
-      "inherits": "mingw-user",
-      "cacheVariables": {
-        "CMAKE_BUILD_TYPE": "Debug",
-        "CMAKE_INSTALL_PREFIX": "${sourceDir}/install/${presetName}",
-        "VCPKG_TARGET_TRIPLET": "x64-mingw-dynamic",
-
-        "LIBRARY_LINKAGE": "dynamic",
-        "CRT_LINKAGE": "dynamic"
-      }
-    },
     {
       "name": "mingw-release",
+      "displayName": "MinGW-w64 - Ninja, Release",
+      "inherits": "ninja-base",
       "binaryDir": "${sourceDir}/build/mingw-release",
-      "inherits": "mingw-user",
       "cacheVariables": {
         "CMAKE_BUILD_TYPE": "Release",
-        "CMAKE_INSTALL_PREFIX": "${sourceDir}/install/${presetName}",
-        "VCPKG_TARGET_TRIPLET": "x64-mingw-dynamic",
-
-        "LIBRARY_LINKAGE": "dynamic",
-        "CRT_LINKAGE": "dynamic"
+        "CMAKE_C_COMPILER": "gcc",
+        "CMAKE_CXX_COMPILER": "g++",
+        "CMAKE_INSTALL_PREFIX": "${sourceDir}/install/mingw-release"
       }
     },
+
     {
-      "name": "mingw-debug-static-md",
-      "binaryDir": "${sourceDir}/build/mingw-debug-static-md",
-      "inherits": "mingw-user",
+      "name": "clang",
+      "displayName": "Clang - Ninja, Debug (clang and clang++ must be on PATH)",
+      "inherits": "ninja-base",
+      "binaryDir": "${sourceDir}/build/clang",
       "cacheVariables": {
         "CMAKE_BUILD_TYPE": "Debug",
-        "CMAKE_INSTALL_PREFIX": "${sourceDir}/install/${presetName}",
-        "CMAKE_EXE_LINKER_FLAGS": "-static",
-        "VCPKG_TARGET_TRIPLET": "x64-mingw-static",
-
-        "LIBRARY_LINKAGE": "static",
-        "CRT_LINKAGE": "dynamic"
+        "CMAKE_C_COMPILER": "clang",
+        "CMAKE_CXX_COMPILER": "clang++",
+        "CMAKE_INSTALL_PREFIX": "${sourceDir}/install/clang"
       }
     },
-    {
-      "name": "mingw-release-static-md",
-      "binaryDir": "${sourceDir}/build/mingw-release-static-md",
-      "inherits": "mingw-user",
-      "cacheVariables": {
-        "CMAKE_BUILD_TYPE": "Release",
-        "CMAKE_INSTALL_PREFIX": "${sourceDir}/install/${presetName}",
-        "CMAKE_EXE_LINKER_FLAGS": "-static",
-        "VCPKG_TARGET_TRIPLET": "x64-mingw-static",
 
-        "LIBRARY_LINKAGE": "static",
-        "CRT_LINKAGE": "dynamic"
-      }
-    },
-   
-
-    {
-      "name": "clang-debug",
-      "binaryDir": "${sourceDir}/build/clang-debug",
-      "inherits": "clang-user",
-      "cacheVariables": {
-        "CMAKE_BUILD_TYPE": "Debug",
-        "CMAKE_INSTALL_PREFIX": "${sourceDir}/install/${presetName}",
-        "VCPKG_TARGET_TRIPLET": "x64-mingw-dynamic",
-
-        "LIBRARY_LINKAGE": "dynamic",
-        "CRT_LINKAGE": "dynamic"
-      }
-    },
     {
       "name": "clang-release",
+      "displayName": "Clang - Ninja, Release",
+      "inherits": "ninja-base",
       "binaryDir": "${sourceDir}/build/clang-release",
-      "inherits": "clang-user",
       "cacheVariables": {
         "CMAKE_BUILD_TYPE": "Release",
-        "CMAKE_INSTALL_PREFIX": "${sourceDir}/install/${presetName}",
-        "VCPKG_TARGET_TRIPLET": "x64-mingw-dynamic",
-
-        "LIBRARY_LINKAGE": "dynamic",
-        "CRT_LINKAGE": "dynamic"
-      }
-    },
-    {
-      "name": "clang-debug-static-md",
-      "binaryDir": "${sourceDir}/build/clang-debug-static-md",
-      "inherits": "clang-user",
-      "cacheVariables": {
-        "CMAKE_BUILD_TYPE": "Debug",
-        "CMAKE_INSTALL_PREFIX": "${sourceDir}/install/${presetName}",
-        "CMAKE_EXE_LINKER_FLAGS": "-static",
-        "VCPKG_TARGET_TRIPLET": "x64-mingw-static",
-
-        "LIBRARY_LINKAGE": "static",
-        "CRT_LINKAGE": "dynamic"
-      }
-    },
-    {
-      "name": "clang-release-static-md",
-      "binaryDir": "${sourceDir}/build/clang-release-static-md",
-      "inherits": "clang-user",
-      "cacheVariables": {
-        "CMAKE_BUILD_TYPE": "Release",
-        "CMAKE_INSTALL_PREFIX": "${sourceDir}/install/${presetName}",
-        "CMAKE_EXE_LINKER_FLAGS": "-static",
-        "VCPKG_TARGET_TRIPLET": "x64-mingw-static",
-
-        "LIBRARY_LINKAGE": "static",
-        "CRT_LINKAGE": "dynamic"
+        "CMAKE_C_COMPILER": "clang",
+        "CMAKE_CXX_COMPILER": "clang++",
+        "CMAKE_INSTALL_PREFIX": "${sourceDir}/install/clang-release"
       }
     }
   ],
@@ -213,91 +94,82 @@
   "buildPresets": [
     {
       "name": "msvc-debug",
-      "configurePreset": "msvc-dynamic",
+      "configurePreset": "msvc",
       "configuration": "Debug",
-      "jobs" : 0
+      "jobs": 0
     },
     {
       "name": "msvc-release",
-      "configurePreset": "msvc-dynamic",
+      "configurePreset": "msvc",
       "configuration": "Release",
       "jobs": 0
     },
     {
-      "name": "msvc-debug-static",
-      "configurePreset": "msvc-static",
-      "configuration": "Debug",
-      "jobs": 0
-    },
-    {
-      "name": "msvc-release-static",
-      "configurePreset": "msvc-static",
-      "configuration": "Release",
-      "jobs": 0
-    },
-    {
-      "name": "msvc-debug-static-md",
-      "configurePreset": "msvc-static-md",
-      "configuration": "Debug",
-      "jobs": 0
-    },
-    {
-      "name": "msvc-release-static-md",
-      "configurePreset": "msvc-static-md",
-      "configuration": "Release",
-      "jobs": 0
-    },
-
-
-    {
-      "name": "mingw-debug",
-      "configurePreset": "mingw-debug",
-      "configuration": "Debug",
+      "name": "mingw",
+      "configurePreset": "mingw",
       "jobs": 0
     },
     {
       "name": "mingw-release",
       "configurePreset": "mingw-release",
-      "configuration": "Release",
       "jobs": 0
     },
     {
-      "name": "mingw-debug-static-md",
-      "configurePreset": "mingw-debug-static-md",
-      "configuration": "Debug",
-      "jobs": 0
-    },
-    {
-      "name": "mingw-release-static-md",
-      "configurePreset": "mingw-release-static-md",
-      "configuration": "Release",
-      "jobs": 0
-    },
-
-
-    {
-      "name": "clang-debug",
-      "configurePreset": "clang-debug",
-      "configuration": "Debug",
+      "name": "clang",
+      "configurePreset": "clang",
       "jobs": 0
     },
     {
       "name": "clang-release",
       "configurePreset": "clang-release",
-      "configuration": "Release",
       "jobs": 0
-    },
+    }
+  ],
+
+  "testPresets": [
     {
-      "name": "clang-debug-static-md",
-      "configurePreset": "clang-debug-static-md",
+      "name": "msvc-debug",
+      "configurePreset": "msvc",
       "configuration": "Debug",
-      "jobs": 0
+      "output": {
+        "outputOnFailure": true
+      }
     },
     {
-      "name": "clang-release-static-md",
-      "configurePreset": "clang-release-static-md",
+      "name": "msvc-release",
+      "configurePreset": "msvc",
       "configuration": "Release",
-      "jobs": 0
+      "output": {
+        "outputOnFailure": true
+      }
+    },
+    {
+      "name": "mingw",
+      "configurePreset": "mingw",
+      "output": {
+        "outputOnFailure": true
+      }
+    },
+    {
+      "name": "mingw-release",
+      "configurePreset": "mingw-release",
+      "output": {
+        "outputOnFailure": true
+      }
+    },
+    {
+      "name": "clang",
+      "configurePreset": "clang",
+      "output": {
+        "outputOnFailure": true
+      }
+    },
+    {
+      "name": "clang-release",
+      "configurePreset": "clang-release",
+      "output": {
+        "outputOnFailure": true
+      }
     }
   ]
 }

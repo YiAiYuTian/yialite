@@ -1,23 +1,11 @@
-﻿if((LIBRARY_LINKAGE STREQUAL "static"))
-  add_library(${PROJECT_NAME} STATIC)
-else()
-  add_library(${PROJECT_NAME} SHARED)
-  target_compile_definitions(${PROJECT_NAME} PRIVATE YIALITE_EXPORTS YIALITE_SHARED)
-endif()
+﻿add_library(yialite_core STATIC)
 
-add_compile_options(${PROJECT_NAME} PRIVATE $<$<CXX_COMPILER_ID:MSVC>:/utf-8>)
+set_target_properties(yialite_core PROPERTIES EXPORT_NAME core)
+add_library(yialite::core ALIAS yialite_core)
 
-add_library(YiaLite::YiaLite ALIAS ${PROJECT_NAME})
+target_compile_options(yialite_core PRIVATE $<$<CXX_COMPILER_ID:MSVC>:/utf-8>)
 
-if(MSVC AND DEFINED CRT_LINKAGE)
-  if(CRT_LINKAGE STREQUAL "static")
-    set_property(TARGET ${PROJECT_NAME} PROPERTY MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
-  else()
-    set_property(TARGET ${PROJECT_NAME} PROPERTY MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>DLL")
-  endif()
-endif()
-
-set(YIA_HEADERS
+set(YIA_CORE_HEADERS
   "audio/audio_manager.h"
   "audio/audio_adapter.h"
   "audio/audio_types.h"
@@ -66,7 +54,7 @@ set(YIA_HEADERS
   "window/window.h"
 )
 
-set(YIA_SOURCES
+set(YIA_CORE_SOURCES
   "audio/audio_manager.cpp"
   "backends/sdl/event/sdl_event_adapter.cpp"
   "backends/sdl/window/sdl_window.cpp"
@@ -88,52 +76,76 @@ set(YIA_SOURCES
   "window/window_manager.cpp"
 )
 
-set(THIRDPARTY_SOURSES
-  "thirdparty/miniaudio/miniaudio.cpp"
-  "${CMAKE_SOURCE_DIR}/thirdparty/miniaudio/extras/decoders/libvorbis/miniaudio_libvorbis.c"
+set(YIA_THIRDPARTY_DIR "${CMAKE_CURRENT_SOURCE_DIR}/thirdparty")
 
-  "thirdparty/stb_image/stb_image.cpp"
+set(YIA_THIRDPARTY_SOURCES
+  "${YIA_THIRDPARTY_DIR}/impl/miniaudio.cpp"
+  "${YIA_THIRDPARTY_DIR}/miniaudio/extras/decoders/libvorbis/miniaudio_libvorbis.c"
 
-  "${CMAKE_SOURCE_DIR}/thirdparty/imgui/imgui.cpp"
-  "${CMAKE_SOURCE_DIR}/thirdparty/imgui/imgui_demo.cpp"
-  "${CMAKE_SOURCE_DIR}/thirdparty/imgui/imgui_draw.cpp"
-  "${CMAKE_SOURCE_DIR}/thirdparty/imgui/imgui_tables.cpp"
-  "${CMAKE_SOURCE_DIR}/thirdparty/imgui/imgui_widgets.cpp"
-  "${CMAKE_SOURCE_DIR}/thirdparty/imgui/backends/imgui_impl_sdl3.cpp"
-  "${CMAKE_SOURCE_DIR}/thirdparty/imgui/backends/imgui_impl_sdlrenderer3.cpp"
+  "${YIA_THIRDPARTY_DIR}/impl/stb_image.cpp"
+
+  "${YIA_THIRDPARTY_DIR}/imgui/imgui.cpp"
+  "${YIA_THIRDPARTY_DIR}/imgui/imgui_demo.cpp"
+  "${YIA_THIRDPARTY_DIR}/imgui/imgui_draw.cpp"
+  "${YIA_THIRDPARTY_DIR}/imgui/imgui_tables.cpp"
+  "${YIA_THIRDPARTY_DIR}/imgui/imgui_widgets.cpp"
+  "${YIA_THIRDPARTY_DIR}/imgui/backends/imgui_impl_sdl3.cpp"
+  "${YIA_THIRDPARTY_DIR}/imgui/backends/imgui_impl_sdlrenderer3.cpp"
 )
 
-target_sources(${PROJECT_NAME} PRIVATE ${YIA_SOURCES} ${YIA_HEADERS} ${THIRDPARTY_SOURSES})
+target_sources(yialite_core
+  PRIVATE
+    ${YIA_CORE_SOURCES}
+    ${YIA_CORE_HEADERS}
+    ${YIA_THIRDPARTY_SOURCES}
+)
 
-set_source_files_properties(${THIRDPARTY_SOURSES} PROPERTIES SKIP_PRECOMPILE_HEADERS ON)
+set_source_files_properties(${YIA_THIRDPARTY_SOURCES}
+  PROPERTIES SKIP_PRECOMPILE_HEADERS ON
+)
 
-target_include_directories(${PROJECT_NAME}
+target_include_directories(yialite_core
   PUBLIC
     $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}>
-    $<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}/thirdparty/imgui>
-    $<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}/thirdparty/miniaudio/extras/decoders/libvorbis/>
-    $<INSTALL_INTERFACE:include>
-    $<INSTALL_INTERFACE:include/yialite/imgui>
+    $<BUILD_INTERFACE:${YIA_THIRDPARTY_DIR}/imgui>
+    $<BUILD_INTERFACE:${YIA_THIRDPARTY_DIR}/miniaudio/extras/decoders/libvorbis>
+    $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}/yialite>
+    $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}/yialite/imgui>
   PRIVATE
-    ${CMAKE_SOURCE_DIR}/thirdparty/imgui/backends
-    ${CMAKE_SOURCE_DIR}/thirdparty/miniaudio
-    ${CMAKE_SOURCE_DIR}/thirdparty/stb
+    "${YIA_THIRDPARTY_DIR}/imgui/backends"
+    "${YIA_THIRDPARTY_DIR}/miniaudio"
+    "${YIA_THIRDPARTY_DIR}/stb"
 )
 
-target_link_libraries(${PROJECT_NAME}
+target_link_libraries(yialite_core
   PRIVATE
     $<BUILD_INTERFACE:SDL3::SDL3-static>
+    $<BUILD_INTERFACE:fmt::fmt>
     $<BUILD_INTERFACE:spdlog::spdlog>
     $<BUILD_INTERFACE:Vorbis::vorbisfile>
     $<BUILD_INTERFACE:Ogg::ogg>
 )
 
-target_compile_definitions(${PROJECT_NAME}
-  PRIVATE
-    IMGUI_DEFINE_MATH_OPERATORS
+set(YIA_BUNDLED_TARGETS "")
+foreach(_yia_alias IN ITEMS
+    SDL3::SDL3-static
+    fmt::fmt
+    spdlog::spdlog
+    Vorbis::vorbisfile
+    Ogg::ogg
 )
+  if(NOT TARGET ${_yia_alias})
+    continue()
+  endif()
+  get_target_property(_yia_real ${_yia_alias} ALIASED_TARGET)
+  if(_yia_real)
+    list(APPEND YIA_BUNDLED_TARGETS ${_yia_real})
+  else()
+    list(APPEND YIA_BUNDLED_TARGETS ${_yia_alias})
+  endif()
+endforeach()
+set(YIA_BUNDLED_TARGETS "${YIA_BUNDLED_TARGETS}" PARENT_SCOPE)
 
-target_precompile_headers(${PROJECT_NAME}
-  PRIVATE
-    pch.h
-)
+target_compile_definitions(yialite_core PRIVATE IMGUI_DEFINE_MATH_OPERATORS)
+
+target_precompile_headers(yialite_core PRIVATE pch.h)

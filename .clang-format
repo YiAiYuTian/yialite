@@ -1,0 +1,7 @@
+BasedOnStyle: LLVM
+BreakBeforeBraces: Allman
+IndentWidth: 4
+UseTab: Never
+AlignTrailingComments: true
+BraceWrapping:
+  AfterControlStatement: Always

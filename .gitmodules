@@ -1,31 +1,35 @@
 [submodule "thirdparty/imgui"]
-	path = thirdparty/imgui
+	path = src/thirdparty/imgui
 	url = https://github.com/ocornut/imgui.git
 	branch = docking
 	shallow = true
 [submodule "thirdparty/miniaudio"]
-	path = thirdparty/miniaudio
+	path = src/thirdparty/miniaudio
 	url = https://github.com/mackron/miniaudio.git
 	shallow = true
 [submodule "thirdparty/ogg"]
-	path = thirdparty/ogg
+	path = src/thirdparty/ogg
 	url = https://github.com/xiph/ogg.git
 	branch = main
 	shallow = true
 [submodule "thirdparty/SDL"]
-	path = thirdparty/SDL
+	path = src/thirdparty/SDL
 	url = https://github.com/libsdl-org/SDL.git
 	shallow = true
 [submodule "thirdparty/spdlog"]
-	path = thirdparty/spdlog
+	path = src/thirdparty/spdlog
 	url = https://github.com/gabime/spdlog.git
 	shallow = true
 [submodule "thirdparty/stb"]
-	path = thirdparty/stb
+	path = src/thirdparty/stb
 	url = https://github.com/nothings/stb.git
 	shallow = true
 [submodule "thirdparty/vorbis"]
-	path = thirdparty/vorbis
+	path = src/thirdparty/vorbis
 	url = https://github.com/xiph/vorbis.git
 	branch = main
+	shallow = true
+[submodule "src/thirdparty/fmt"]
+	path = src/thirdparty/fmt
+	url = https://github.com/fmtlib/fmt.git
 	shallow = true
