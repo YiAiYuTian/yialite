@@ -1,6 +1,6 @@
 # yialite
 
-As a beginner in C++, I casually wrote this library. There are many areas that are not well-developed, and most of it was also written with AI assistance. Suggestions are welcome for any shortcomings.
+Experimental Learning Mini Project
 
 ## Third-Party Libraries
 
