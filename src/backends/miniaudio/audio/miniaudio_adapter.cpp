@@ -10,22 +10,22 @@ namespace yialite
 static void* miniaudio_malloc(size_t sz, void* p_user_data)
 {
     (void)p_user_data;
-    return ALLOCATE_SIZED(sz);
+    return alloc_raw(sz);
 }
 
 static void* miniaudio_realloc(void* p, size_t sz, void* p_user_data)
 {
     (void)p_user_data;
-    return REALLOCATE_SIZED(p, sz);
+    return realloc_raw(p, sz);
 }
 
 static void miniaudio_free(void* p, void* p_user_data)
 {
     (void)p_user_data;
-    DEALLOCATE_SIZED(p);
+    dealloc_raw(p);
 }
 
-MiniaudioAdapter::MiniaudioAdapter()
+MiniaudioAdapter::MiniaudioAdapter() noexcept
 {
     memset(&m_engine, 0, sizeof(m_engine));
     memset(&m_resource_manager, 0, sizeof(m_resource_manager));
@@ -79,7 +79,7 @@ void MiniaudioAdapter::destroy()
         for (auto& pair : m_buses)
         {
             ma_sound_group_uninit(pair.second);
-            DEALLOCATE_OBJECT(pair.second);
+            dealloc_obj(pair.second);
         }
         m_buses.clear();
         ma_engine_uninit(&m_engine);
@@ -156,13 +156,13 @@ VoiceID MiniaudioAdapter::play(SoundID id, const PlayParams& params)
 
     ma_sound_group* group = find_bus(params.bus);
 
-    ma_sound* snd = ALLOCATE_OBJECT(ma_sound);
+    ma_sound* snd = alloc_obj<ma_sound>();
     ma_result result = ma_sound_init_from_file(
         &m_engine, path->c_str(), 0, group, nullptr, snd
     );
     if (result != MA_SUCCESS)
     {
-        DEALLOCATE_OBJECT(snd);
+        dealloc_obj(snd);
         Logger::error("Failed to play sound (id={}): {}", id, ma_result_description(result));
         return INVALID_VOICE_ID;
     }
@@ -349,11 +349,11 @@ void MiniaudioAdapter::create_bus(const char* name)
     String key(name);
     if (m_buses.find(key)) return;
 
-    ma_sound_group* group = ALLOCATE_OBJECT(ma_sound_group);
+    ma_sound_group* group = alloc_obj<ma_sound_group>();
     ma_result result = ma_sound_group_init(&m_engine, 0, nullptr, group);
     if (result != MA_SUCCESS)
     {
-        DEALLOCATE_OBJECT(group);
+        dealloc_obj(group);
         Logger::error("Failed to create bus '{}'", name);
         return;
     }
@@ -386,7 +386,7 @@ void MiniaudioAdapter::remove_bus(const char* name)
     if (!group) return;
     
     ma_sound_group_uninit(*group);
-    DEALLOCATE_OBJECT(*group);
+    dealloc_obj(*group);
     m_buses.remove(key);
 }
 
@@ -464,7 +464,7 @@ void MiniaudioAdapter::release_voice(size_t index)
     if (!vd.active) return;
     
     ma_sound_uninit(vd.sound);
-    DEALLOCATE_OBJECT(vd.sound);
+    dealloc_obj(vd.sound);
     vd.sound     = nullptr;
     vd.active    = false;
     vd.paused    = false;

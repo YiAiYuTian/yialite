@@ -119,7 +119,7 @@ public:
         m_bus.publish(event);
     }
 private:
-    EventManager() = default;
+    EventManager() noexcept = default;
     EventManager(EventManager&&) = delete;
     EventManager(const EventManager&) = delete;
     

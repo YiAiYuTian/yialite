@@ -36,7 +36,7 @@ private:
         List<WrappedHandle> handles[EVENT_PRIORITY_COUNT];
     };
 public:
-    EventBus() = default;
+    EventBus() noexcept = default;
     ~EventBus() = default;
     EventBus(EventBus&&) = delete;
     EventBus(const EventBus&) = delete;

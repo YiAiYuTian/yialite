@@ -2,17 +2,17 @@
 
 static void* yialite_stb_malloc(size_t size)
 {
-   return ALLOCATE_SIZED(size);
+    return yialite::alloc_raw(size);
 }
 
 static void* yialite_stb_realloc(void* ptr, size_t size)
 {
-   return REALLOCATE_SIZED(ptr, size);
+    return yialite::realloc_raw(ptr, size);
 }
 
 static void yialite_stb_free(void* ptr)
 {
-   DEALLOCATE_SIZED(ptr);
+    yialite::dealloc_raw(ptr);
 }
 
 #define STB_IMAGE_IMPLEMENTATION

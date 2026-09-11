@@ -37,11 +37,12 @@ public:
     Delegate(Delegate&& other) noexcept { steal_from(other); }
 
     template <typename Fn>
-    requires
+    requires(
         !std::is_same_v<std::decay_t<Fn>, Delegate>             &&
         (std::is_invocable_r_v<Ret, std::decay_t<Fn>, Args...>  ||
         std::is_member_function_pointer_v<std::decay_t<Fn>>)
-    Delegate(Fn&& func)
+    )
+    Delegate(Fn&& func) noexcept
     {
         using Decayed = std::decay_t<Fn>;
 
@@ -80,11 +81,12 @@ public:
     }
 
     template <typename Fn>
-    requires
+    requires(
         !std::is_same_v<std::decay_t<Fn>, Delegate>             &&
         (std::is_invocable_r_v<Ret, std::decay_t<Fn>, Args...>  ||
         std::is_member_function_pointer_v<std::decay_t<Fn>>)
-    Delegate& operator=(Fn&& func)
+    )
+    Delegate& operator=(Fn&& func) noexcept
     {
         using Decayed = std::decay_t<Fn>;
 
@@ -154,7 +156,7 @@ private:
 
         template <typename U>
         requires(std::is_constructible_v<Fn, U&&>)
-        explicit CallableImpl(U&& f) : m_func(std::forward<U>(f)) {}
+        explicit CallableImpl(U&& f) noexcept(std::is_nothrow_constructible_v<Fn, U&&>) : m_func(std::forward<U>(f)) {}
 
         Ret invoke(Args... args) const override
         {
@@ -170,7 +172,7 @@ private:
                 {
                     return new (dst) CallableImpl(std::move(copy));
                 }
-                else return ALLOCATE_OBJECT(CallableImpl, std::move(copy));
+                else return alloc_obj<CallableImpl>(std::move(copy));
             }
             else return nullptr;
         }
@@ -187,7 +189,7 @@ private:
         if (!m_callable) return;
 
         if (m_inline) m_callable->~ICallable();
-        else DEALLOCATE_OBJECT(m_callable);
+        else dealloc_obj(m_callable);
 
         m_callable = nullptr;
         m_inline = false;
@@ -240,7 +242,7 @@ private:
     {
         tidy();
         using Impl = std::decay_t<Fn>;
-        ICallable* p = ALLOCATE_OBJECT(CallableImpl<Impl>, std::forward<Fn>(func));
+        ICallable* p = alloc_obj<CallableImpl<Impl>>(std::forward<Fn>(func));
         m_callable = p;
         m_inline = false;
     }

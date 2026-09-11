@@ -33,7 +33,7 @@ public:
     void* get_native_handle(WindowID id);
     const void* get_native_handle(WindowID id) const;
 private:
-    WindowManager() = default;
+    WindowManager() noexcept = default;
     WindowManager(WindowManager&&) = delete;
     WindowManager(const WindowManager&) = delete;
     

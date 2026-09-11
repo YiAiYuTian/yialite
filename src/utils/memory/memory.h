@@ -65,7 +65,7 @@ public:
     }
     void release_weak()
     {
-        if (--m_weak == 0) { DEALLOCATE_OBJECT(this); }
+        if (--m_weak == 0) { dealloc_obj(this); }
     }
 
     size_t get_ref_count() const { return m_ref; }
@@ -108,7 +108,7 @@ public:
     { 
         if (m_ptr)
         {
-            m_block = ALLOCATE_OBJECT(ControlBlockImpl<T>, m_ptr);
+            m_block = alloc_obj<ControlBlockImpl<T>>(m_ptr);
         }
     }
     explicit Ref(const Ref& other)
@@ -176,7 +176,7 @@ public:
             return;
         }
         m_ptr = ptr;
-        m_block = ALLOCATE_OBJECT(ControlBlockImpl<T>, m_ptr); 
+        m_block = alloc_obj<ControlBlockImpl<T>>(m_ptr); 
         if (m_block) m_block->add_ref();
     }
 private:
@@ -246,13 +246,13 @@ private:
 template<typename T, typename ...Args>
 Scope<T> make_scope(Args&&... args)
 {
-    return Scope<T>(ALLOCATE_OBJECT(T, std::forward<Args>(args)...));
+    return Scope<T>(alloc_obj<T>(std::forward<Args>(args)...));
 }
 
 template<typename T, typename ...Args>
 Ref<T> make_ref(Args&&... args)
 {
-    return Ref<T>(ALLOCATE_OBJECT(T, std::forward<Args>(args)...));
+    return Ref<T>(alloc_obj<T>(std::forward<Args>(args)...));
 }
 
 template<typename T>

@@ -13,8 +13,6 @@ int main(int argc, char** argv)
 	_CrtSetReportMode(_CRT_WARN, _CRTDBG_MODE_FILE);
 	_CrtSetReportFile(_CRT_WARN, _CRTDBG_FILE_STDERR);
 #endif
-	yialite::Allocator::init();
-
 	auto app_result = yialite::App::create();
 	if(!app_result)
 	{
@@ -25,5 +23,5 @@ int main(int argc, char** argv)
 	app->run(argc, argv);
 	yialite::App::destroy(app);
 
-	yialite::Allocator::shutdown();
+    return 0;
 }

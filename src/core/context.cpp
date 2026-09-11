@@ -48,7 +48,7 @@ Context& Context::operator=(Context&& other) noexcept
 
 Result<Context*> Context::create(const ContextConfig& config)
 {
-    Context* ctx = ALLOCATE_OBJECT(Context);
+    Context* ctx = alloc_obj<Context>();
     if (!ctx) return Result<Context*>(ErrorCode::OutOfMemory, "Failed to allocate Context");
 
     //initialize SDL
@@ -102,7 +102,7 @@ Result<Context*> Context::create(const ContextConfig& config)
 
 void Context::destroy(Context* context)
 {
-    DEALLOCATE_OBJECT(context);
+    dealloc_obj(context);
 }
 
 Context::~Context()

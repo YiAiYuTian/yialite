@@ -10,24 +10,22 @@ namespace yialite
 
 static void* yialite_sdl_malloc(size_t size)
 {
-    return ALLOCATE_SIZED(size);
+    return alloc_raw(size);
 }
 
 static void* yialite_sdl_calloc(size_t nmemb, size_t size)
 {
-    void* ptr = ALLOCATE_SIZED(nmemb * size);
-    if(ptr){ std::memset(ptr, 0, nmemb * size); }
-    return ptr;
+    return calloc_raw(nmemb, size);
 }
 
 static void* yialite_sdl_realloc(void *mem, size_t size)
 {
-    return REALLOCATE_SIZED(mem, size);
+    return realloc_raw(mem, size);
 }
 
 static void yialite_sdl_free(void *mem)
 {
-    DEALLOCATE_SIZED(mem);
+    dealloc_raw(mem);
 }
 
 Result<void> init()

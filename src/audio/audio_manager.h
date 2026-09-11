@@ -60,7 +60,7 @@ public:
 
     explicit operator bool() const noexcept { return m_adapter != nullptr; }
 private:
-    AudioManager() = default;
+    AudioManager() noexcept = default;
     AudioManager(AudioManager&&) = delete;
     AudioManager(const AudioManager&) = delete;
 

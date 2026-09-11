@@ -20,7 +20,7 @@ struct DialogFileFilter
 class YIALITE_API IWindow
 {
 public:
-    IWindow() = default;
+    IWindow() noexcept = default;
     virtual ~IWindow() = default;
     IWindow(IWindow&&) = delete;
     IWindow(const IWindow&) = delete;

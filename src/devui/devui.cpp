@@ -14,12 +14,12 @@ namespace yialite
 
 void* yialite_imgui_malloc(size_t sz, void* user_data)
 {
-    return ALLOCATE_SIZED(sz);
+    return alloc_raw(sz);
 }
 
 void yialite_imgui_free(void* ptr, void* user_data)
 {
-    DEALLOCATE_SIZED(ptr);
+    dealloc_raw(ptr);
 }
 
 struct DevUI::Impl
@@ -29,8 +29,8 @@ struct DevUI::Impl
 
 Result<DevUI*> DevUI::create(IWindow* window, Renderer2D* renderer)
 {
-    DevUI* devui = ALLOCATE_OBJECT(DevUI);
-    devui->m_impl = ALLOCATE_OBJECT(DevUI::Impl);
+    DevUI* devui = alloc_obj<DevUI>();
+    devui->m_impl = alloc_obj<DevUI::Impl>();
     devui->m_impl->sdl_renderer = reinterpret_cast<SDL_Renderer*>(renderer->get_native_handle());
 
     ImGui::SetAllocatorFunctions(yialite_imgui_malloc, yialite_imgui_free);
@@ -51,7 +51,7 @@ Result<DevUI*> DevUI::create(IWindow* window, Renderer2D* renderer)
 
 void DevUI::destroy(DevUI* devui)
 {
-    DEALLOCATE_OBJECT(devui);
+    dealloc_obj(devui);
 }
 
 DevUI::~DevUI()
@@ -61,7 +61,7 @@ DevUI::~DevUI()
         ImGui_ImplSDLRenderer3_Shutdown();
         ImGui_ImplSDL3_Shutdown();
         ImGui::DestroyContext();
-        DEALLOCATE_OBJECT(m_impl);
+        dealloc_obj(m_impl);
     }
 }
 

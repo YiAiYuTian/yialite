@@ -7,21 +7,21 @@ namespace yialite
 {
 EventManager::~EventManager()
 {
-    DEALLOCATE_OBJECT(m_evt_adapter);
+    dealloc_obj(m_evt_adapter);
 }
 
 Result<EventManager*> EventManager::create()
 {
-    EventManager* mgr = ALLOCATE_OBJECT(EventManager);
+    EventManager* mgr = alloc_obj<EventManager>();
     if (!mgr) return Result<EventManager*>(ErrorCode::OutOfMemory);
 
-    mgr->m_evt_adapter = ALLOCATE_OBJECT(SDLEventAdapter);
+    mgr->m_evt_adapter = alloc_obj<SDLEventAdapter>();
     return mgr;
 }
 
 void EventManager::destroy(EventManager* mgr)
 {
-    DEALLOCATE_OBJECT(mgr);
+    dealloc_obj(mgr);
 }
 
 void EventManager::set_devui(DevUI* devui)

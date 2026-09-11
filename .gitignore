@@ -3,3 +3,5 @@
 install
 custom-overlay
 Directory.Build.props
+*:Zone.Identifier
+imgui.ini

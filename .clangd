@@ -1,5 +1,6 @@
 CompileFlags:
-  Add: [-std=c23, -Wall]
+  CompilationDatabase: build/mingw
+  Add: [-Wall]
 Diagnostics:
   FunctionArgPlaceholders: true
 Completion:

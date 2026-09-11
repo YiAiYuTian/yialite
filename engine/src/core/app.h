@@ -22,7 +22,7 @@ public:
 
     int run(int argc, char** argv);
 private:
-    App() = default;
+    App() noexcept = default;
 private:
     bool is_running = true;
     Context* m_context = nullptr;

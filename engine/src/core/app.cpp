@@ -58,7 +58,7 @@ int g_counter = 1;
 class TestEventCallback : public EventListener
 {
 public:
-	TestEventCallback() : EventListener(g_evt_mgr) 
+	TestEventCallback() noexcept : EventListener(g_evt_mgr)
 	{
 		subscribe_auto(
 			[](const KeyEvent& e)
@@ -100,7 +100,7 @@ App::~App()
 Result<App*> App::create()
 {
 	App* app = nullptr;
-	app = ALLOCATE_OBJECT(App);
+	app = alloc_obj<App>();
 
     ContextConfig context_config;
     context_config.window_config.title = "YiaLiteTest";
@@ -163,14 +163,14 @@ Result<App*> App::create()
 			}
 			else if(e.key == Keycode::Q && e.down)
 			{
-				auto* test = ALLOCATE_OBJECT(TestEventCallback);
+				auto* test = alloc_obj<TestEventCallback>();
 				app->m_test_callbacks.emplace_back(test);
 			}
 			else if(e.key == Keycode::E && e.down)
 			{
 				auto* test = app->m_test_callbacks.back();
 				app->m_test_callbacks.pop_back();
-				DEALLOCATE_OBJECT(test);
+				dealloc_obj(test);
 			}
 			else if (e.key == Keycode::P && e.down)
 			{
@@ -253,10 +253,6 @@ Result<App*> App::create()
 	ls.z = 0.0f;
 	g_ado_mgr->set_listener(ls);
 
-	Allocator::print_all_memory_info();
-	log(LogLevel::Trace, "All: {}", Allocator::get_alloc_size());
-	log(LogLevel::Trace, "Requested: {}", Allocator::get_alloc_requested_size());
-
 	// int* raw_array = static_cast<int*>(allocate_raw(sizeof(int) * 10));
 	// int* int_array = allocate_array<int>(10);
 	// MemTestClass* class_array = allocate_array<MemTestClass>(10);
@@ -308,7 +304,7 @@ Result<App*> App::create()
 
 void App::destroy(App *app)
 {
-	DEALLOCATE_OBJECT(app);
+	dealloc_obj(app);
 }
 
 int App::run(int argc, char** argv)

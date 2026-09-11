@@ -2,6 +2,7 @@
 #define YIALITE_BASE_TYPES_H
 
 #include <cstdint>
+#include <cstddef>
 
 namespace yialite
 {

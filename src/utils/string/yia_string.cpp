@@ -11,14 +11,14 @@ String::String(const char* str)
     {
         m_length = 0;
         m_capacity = 15;
-        m_data = static_cast<char*>(ALLOCATE_SIZED(m_capacity + 1));
+        m_data = static_cast<char*>(alloc_raw(m_capacity + 1));
         m_data[0] = '\0';
         return;
     }
 
     m_length = strlen(str);
     m_capacity = calculate_capacity(m_length);
-    m_data = static_cast<char*>(ALLOCATE_SIZED(m_capacity + 1));
+    m_data = static_cast<char*>(alloc_raw(m_capacity + 1));
     memcpy(m_data, str, m_length);
     m_data[m_length] = '\0';
 }
@@ -26,7 +26,7 @@ String::String(const char* str)
 String::String(size_t capacity)
 {
     m_capacity = capacity;
-    m_data = static_cast<char*>(ALLOCATE_SIZED(m_capacity + 1));
+    m_data = static_cast<char*>(alloc_raw(m_capacity + 1));
     m_data[0] = '\0';
 }
 
@@ -36,14 +36,14 @@ String::String(const char *str, size_t len)
     {
         m_length = 0;
         m_capacity = 15;
-        m_data = static_cast<char*>(ALLOCATE_SIZED(m_capacity + 1));
+        m_data = static_cast<char*>(alloc_raw(m_capacity + 1));
         m_data[0] = '\0';
         return;
     }
 
     m_length = len;
     m_capacity = calculate_capacity(m_length);
-    m_data = static_cast<char*>(ALLOCATE_SIZED(m_capacity + 1));
+    m_data = static_cast<char*>(alloc_raw(m_capacity + 1));
     memcpy(m_data, str, m_length);
     m_data[m_length] = '\0';
 }
@@ -57,7 +57,7 @@ String::String(const String &str)
 {
     m_length = str.m_length;
     m_capacity = str.m_capacity;
-    m_data = static_cast<char*>(ALLOCATE_SIZED(m_capacity + 1));
+    m_data = static_cast<char*>(alloc_raw(m_capacity + 1));
     memcpy(m_data, str.m_data, m_length + 1);
 }
 
@@ -71,7 +71,7 @@ String::String(String &&str) noexcept
 
 String::~String() noexcept
 {
-    DEALLOCATE_SIZED(m_data);
+    dealloc_raw(m_data);
 }
 
 const char* String::c_str() const noexcept
@@ -141,7 +141,7 @@ String &String::operator+=(const char *str)
     size_t new_length = m_length + str_len;
     m_capacity = calculate_capacity(new_length);
 
-    m_data = static_cast<char*>(REALLOCATE_SIZED(m_data, m_capacity + 1));
+    m_data = static_cast<char*>(realloc_raw(m_data, m_capacity + 1));
     memcpy(m_data + m_length, str, str_len + 1);
     m_length = new_length;
 
@@ -155,7 +155,7 @@ String &String::operator+=(const String &str)
     size_t new_length = m_length + str.m_length;
     m_capacity = calculate_capacity(new_length);
 
-    m_data = static_cast<char*>(REALLOCATE_SIZED(m_data, m_capacity + 1));
+    m_data = static_cast<char*>(realloc_raw(m_data, m_capacity + 1));
     memcpy(m_data + m_length, str.m_data, str.m_length + 1);
     m_length = new_length;
 
@@ -168,7 +168,7 @@ String& String::operator=(const String &str)
     
     m_length = str.m_length;
     m_capacity = str.m_capacity;
-    m_data = static_cast<char*>(REALLOCATE_SIZED(m_data, m_capacity + 1));
+    m_data = static_cast<char*>(realloc_raw(m_data, m_capacity + 1));
     memcpy(m_data, str.m_data, m_length + 1);
 
     return *this;
@@ -178,7 +178,7 @@ String &String::operator=(String &&str) noexcept
 {
     if (this != &str)
     {
-        DEALLOCATE_SIZED(m_data);
+        dealloc_raw(m_data);
 
         m_data = str.m_data;
         m_length = str.m_length;
@@ -198,7 +198,7 @@ String& String::operator=(const char *str)
     
     m_length = strlen(str);
     m_capacity = calculate_capacity(m_length);
-    m_data = static_cast<char*>(REALLOCATE_SIZED(m_data, m_capacity + 1));
+    m_data = static_cast<char*>(realloc_raw(m_data, m_capacity + 1));
     memcpy(m_data, str, m_length + 1);
 
     return *this;
@@ -250,7 +250,7 @@ void String::append(const char *str, size_t count)
     size_t new_length = m_length + count;
     m_capacity = calculate_capacity(new_length);
     
-    m_data = static_cast<char*>(REALLOCATE_SIZED(m_data, m_capacity + 1));
+    m_data = static_cast<char*>(realloc_raw(m_data, m_capacity + 1));
     memcpy(m_data + m_length, str, count);
     m_length = new_length;
     m_data[m_length] = '\0';

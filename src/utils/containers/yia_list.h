@@ -72,7 +72,7 @@ List<T>::List(size_t capacity)
     if(capacity == 0) return;
 
     m_capacity = capacity;
-    m_data = static_cast<T*>(ALLOCATE_SIZED(m_capacity * sizeof(T)));
+    m_data = static_cast<T*>(alloc_raw(m_capacity * sizeof(T)));
     m_size = 0;
 }
 
@@ -82,7 +82,7 @@ List<T>::List(size_t size, const T &value)
     if(size == 0) return;
 
     m_capacity = calculate_capacity(size);
-    m_data = static_cast<T*>(ALLOCATE_SIZED(m_capacity * sizeof(T)));
+    m_data = static_cast<T*>(alloc_raw(m_capacity * sizeof(T)));
     m_size = size;
 
     for(size_t i = 0; i < size; ++i)
@@ -98,7 +98,7 @@ List<T>::List(const List& other)
 
     m_capacity = other.m_capacity;
     m_size = other.m_size;
-    m_data = static_cast<T*>(ALLOCATE_SIZED(m_capacity * sizeof(T)));
+    m_data = static_cast<T*>(alloc_raw(m_capacity * sizeof(T)));
 
     for(size_t i = 0; i < m_size; ++i)
     {
@@ -121,7 +121,7 @@ template <typename T>
 List<T>::~List() noexcept
 {
     clear();
-    DEALLOCATE_SIZED(m_data);
+    dealloc_raw(m_data);
 }
 
 template <typename T>
@@ -199,20 +199,20 @@ void List<T>::shrink_to_fit()
 
     if(m_size == 0)
     {
-        DEALLOCATE_SIZED(m_data);
+        dealloc_raw(m_data);
         m_data = nullptr;
         m_capacity = 0;
         return;
     }
 
     size_t target_cap = (m_size < 16) ? 16 : m_size;
-    T* new_data = static_cast<T*>(ALLOCATE_SIZED(target_cap * sizeof(T)));
+    T* new_data = static_cast<T*>(alloc_raw(target_cap * sizeof(T)));
     for(size_t i = 0; i < m_size; ++i)
     {
         new (new_data + i) T(std::move(m_data[i]));
         m_data[i].~T();
     }
-    DEALLOCATE_SIZED(m_data);
+    dealloc_raw(m_data);
 
     m_data = new_data;
     m_capacity = target_cap;
@@ -328,7 +328,7 @@ List<T>& List<T>::operator=(const List<T>& other)
 
     if(m_capacity == 0) return *this;
     
-    m_data = static_cast<T*>(ALLOCATE_SIZED(m_capacity * sizeof(T)));
+    m_data = static_cast<T*>(alloc_raw(m_capacity * sizeof(T)));
 
     for(size_t i = 0; i < m_size; ++i)
     {
@@ -344,7 +344,7 @@ List<T>& List<T>::operator=(List<T> &&other) noexcept
     if(this == &other) return *this;
 
     clear();
-    DEALLOCATE_SIZED(m_data);
+    dealloc_raw(m_data);
 
     m_data = other.m_data;
     m_size = other.m_size;
@@ -384,13 +384,13 @@ void List<T>::reserve(size_t capacity)
 {
     if(capacity <= m_capacity) return;
 
-    T* new_data = static_cast<T*>(ALLOCATE_SIZED(capacity * sizeof(T)));
+    T* new_data = static_cast<T*>(alloc_raw(capacity * sizeof(T)));
     for(size_t i = 0; i < m_size; ++i)
     {
         new (new_data + i) T(std::move(m_data[i]));
         m_data[i].~T();
     }
-    DEALLOCATE_SIZED(m_data);
+    dealloc_raw(m_data);
 
     m_data = new_data;
     m_capacity = capacity;

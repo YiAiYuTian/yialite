@@ -12,14 +12,14 @@ WindowManager::~WindowManager()
     for(auto& pair : m_windows)
     {
         pair.second->destroy();
-        DEALLOCATE_OBJECT(pair.second);
+        dealloc_obj(pair.second);
     }
     m_windows.clear();
 }
 
 Result<WindowManager*> WindowManager::create(const WindowConfig& config)
 {
-    WindowManager* wm = ALLOCATE_OBJECT(WindowManager);
+    WindowManager* wm = alloc_obj<WindowManager>();
     if(!wm) return Result<WindowManager*>(ErrorCode::OutOfMemory);
     
     wm->m_first_window_id = wm->create_window(config);
@@ -28,12 +28,12 @@ Result<WindowManager*> WindowManager::create(const WindowConfig& config)
 
 void WindowManager::destroy(WindowManager *wm)
 {
-    DEALLOCATE_OBJECT(wm);
+    dealloc_obj(wm);
 }
 
 WindowID WindowManager::create_window(const WindowConfig &config)
 {
-    IWindow* win = ALLOCATE_OBJECT(SDLWindow);
+    IWindow* win = alloc_obj<SDLWindow>();
     if(!win) return INVALID_WINDOW_ID;
 
     auto win_init_result = win->init(config);
@@ -54,7 +54,7 @@ void WindowManager::destroy_window(WindowID id)
     if(!window) return;
 
     (*window)->destroy();
-    DEALLOCATE_OBJECT(*window);
+    dealloc_obj(*window);
     m_windows.remove(id);
 }
 

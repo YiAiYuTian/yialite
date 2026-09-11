@@ -9,21 +9,21 @@ namespace yialite
 
 Result<AudioManager*> AudioManager::create()
 {
-    AudioManager* am = ALLOCATE_OBJECT(AudioManager);
+    AudioManager* am = alloc_obj<AudioManager>();
     if (!am) return Result<AudioManager*>(ErrorCode::OutOfMemory, "Failed to allocate AudioManager");
 
-    IAudioAdapter* adapter = ALLOCATE_OBJECT(MiniaudioAdapter);
+    IAudioAdapter* adapter = alloc_obj<MiniaudioAdapter>();
     if (!adapter)
     {
-        DEALLOCATE_OBJECT(am);
+        dealloc_obj(am);
         return Result<AudioManager*>(ErrorCode::OutOfMemory, "Failed to allocate MiniaudioAdapter");
     }
 
     auto init_result = adapter->init();
     if (!init_result)
     {
-        DEALLOCATE_OBJECT(adapter);
-        DEALLOCATE_OBJECT(am);
+        dealloc_obj(adapter);
+        dealloc_obj(am);
         return Result<AudioManager*>(init_result.error());
     }
 
@@ -36,14 +36,14 @@ AudioManager::~AudioManager()
     if (m_adapter)
     {
         m_adapter->destroy();
-        DEALLOCATE_OBJECT(m_adapter);
+        dealloc_obj(m_adapter);
         m_adapter = nullptr;
     }
 }
 
 void AudioManager::destroy(AudioManager* am)
 {
-    DEALLOCATE_OBJECT(am);
+    dealloc_obj(am);
 }
 
 void AudioManager::update(float dt)

@@ -17,7 +17,7 @@ namespace yialite
 class MiniaudioAdapter : public IAudioAdapter
 {
 public:
-    MiniaudioAdapter();
+    MiniaudioAdapter() noexcept;
     ~MiniaudioAdapter() override = default;
 
     Result<void> init() override;

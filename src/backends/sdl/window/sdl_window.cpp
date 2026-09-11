@@ -11,7 +11,7 @@ static void sdl_dialog_file_callback(void* user_data, const char* const* filelis
 {
     DialogFileCallback* callback = reinterpret_cast<DialogFileCallback*>(user_data);
     (*callback)(filelist, filter);
-    DEALLOCATE_OBJECT(callback);
+    dealloc_obj(callback);
 }
 
 static SDL_WindowFlags to_sdl_flags(WindowFlags_ flags)
@@ -53,7 +53,7 @@ void SDLWindow::destroy()
 
 void SDLWindow::show_open_file_dialog(DialogFileCallback callback, const DialogFileFilter* filters, int nfilters, const char *default_location, bool allow_many)
 {
-    auto* heap_callback = ALLOCATE_OBJECT(DialogFileCallback, std::move(callback));
+    auto* heap_callback = alloc_obj<DialogFileCallback>(std::move(callback));
     
     SDL_ShowOpenFileDialog(
         sdl_dialog_file_callback, 
@@ -68,7 +68,7 @@ void SDLWindow::show_open_file_dialog(DialogFileCallback callback, const DialogF
 
 void SDLWindow::show_save_file_dialog(DialogFileCallback callback, const DialogFileFilter *filters, int nfilters, const char *default_location)
 {
-    auto* heap_callback = ALLOCATE_OBJECT(DialogFileCallback, std::move(callback));
+    auto* heap_callback = alloc_obj<DialogFileCallback>(std::move(callback));
     
     SDL_ShowSaveFileDialog(
         sdl_dialog_file_callback, 
@@ -83,7 +83,7 @@ void SDLWindow::show_save_file_dialog(DialogFileCallback callback, const DialogF
 
 void SDLWindow::show_open_folder_dialog(DialogFileCallback callback, const char *default_location, bool allow_many)
 {
-    auto* heap_callback = ALLOCATE_OBJECT(DialogFileCallback, std::move(callback));
+    auto* heap_callback = alloc_obj<DialogFileCallback>(std::move(callback));
     
     SDL_ShowOpenFolderDialog(
         sdl_dialog_file_callback, 
