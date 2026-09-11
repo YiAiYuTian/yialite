@@ -39,8 +39,8 @@ set(YIA_CORE_HEADERS
   "utils/containers/yia_list.h"
   "utils/containers/yia_pair.h"
   "utils/memory/allocator.h"
-  "utils/memory/mem_pool.h"
   "utils/memory/memory.h"
+  "utils/memory/yia_malloc.h"
   "utils/string/yia_string.h"
   "utils/string/yia_string_view.h"
   "utils/singleton.h"
@@ -70,7 +70,7 @@ set(YIA_CORE_SOURCES
   "renderer/renderer2d.cpp"
   "renderer/texture/texture2d.cpp"
   "utils/memory/allocator.cpp"
-  "utils/memory/mem_pool.cpp"
+  "utils/memory/yia_malloc.c"
   "utils/string/yia_string.cpp"
   "utils/string/yia_string_view.cpp"
   "window/window_manager.cpp"
@@ -101,6 +101,7 @@ target_sources(yialite_core
 )
 
 set_source_files_properties(${YIA_THIRDPARTY_SOURCES}
+  "utils/memory/yia_malloc.c"
   PROPERTIES SKIP_PRECOMPILE_HEADERS ON
 )
 

@@ -40,6 +40,7 @@ public:
     static void         print_all_memory_info();
     static size_t       get_alloc_size();
     static size_t       get_alloc_requested_size();
+    static void         print_stats();   // 简易统计：总分配/存活块数（用于观察 SDL/miniaudio/imgui 是否走 yia）
 
     static void         init();
     static void         shutdown();

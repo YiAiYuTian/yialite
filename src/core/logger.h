@@ -8,7 +8,7 @@
 
 #include <spdlog/spdlog.h>
 #include <spdlog/sinks/stdout_color_sinks.h>
-#include <fmt/fmt.h>
+#include <fmt/format.h>
 
 namespace yialite
 {

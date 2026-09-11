@@ -1,4 +1,4 @@
-#include "yialite/utils/memory/allocator.h"
+#include "utils/memory/allocator.h"
 
 #include <cstdio>
 

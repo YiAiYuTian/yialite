@@ -1,7 +1,7 @@
 ﻿#include "app.h"
 
 #include "yialite.h"
-#include "../thirdparty/imgui/imgui.h"
+#include "imgui.h"
 
 #include <chrono>
 

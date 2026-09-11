@@ -1,6 +1,6 @@
-#include "yialite/engine/core/app.h"
-#include "yialite/utils/memory/allocator.h"
-#include "yialite/core/log.h"
+#include "core/app.h"
+#include "core/log.h"
+#include "utils/memory/allocator.h"
 
 #if defined(_DEBUG) && defined(_WIN32)
 	#include <crtdbg.h>
