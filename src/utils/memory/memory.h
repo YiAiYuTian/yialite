@@ -19,14 +19,14 @@ public:
     Scope(Scope&& other) noexcept : m_ptr(other.m_ptr) { other.m_ptr = nullptr; }
     Scope(const Scope&) = delete;
     Scope& operator=(const Scope&) = delete;
-    ~Scope() { DEALLOCATE_OBJECT(m_ptr); m_ptr = nullptr; }
+    ~Scope() { dealloc_obj(m_ptr); m_ptr = nullptr; }
 
     //operators
     Scope& operator=(Scope&& other) noexcept
     {
         if (this != &other)
         {
-            DEALLOCATE_OBJECT(m_ptr);
+            dealloc_obj(m_ptr);
             m_ptr = other.m_ptr;
             other.m_ptr = nullptr;
         }
@@ -43,7 +43,7 @@ public:
     [[nodiscard]] const T* get() const { return m_ptr; }
     [[nodiscard]] T* release() { T* ptr = m_ptr; m_ptr = nullptr; return ptr; }
     
-    void reset(T* ptr = nullptr) { DEALLOCATE_OBJECT(m_ptr); m_ptr = ptr; }
+    void reset(T* ptr = nullptr) { dealloc_obj(m_ptr); m_ptr = ptr; }
 private:
     T* m_ptr = nullptr;
 };
@@ -88,7 +88,7 @@ public:
 private:
     void destroy_object() override
     {
-        DEALLOCATE_OBJECT(m_obj);
+        dealloc_obj(m_obj);
         m_obj = nullptr;
     }
 private:

@@ -322,7 +322,7 @@ List<T>& List<T>::operator=(const List<T>& other)
     if(this == &other) return *this;
 
     clear();
-    DEALLOCATE_SIZED(m_data);
+    dealloc_raw(m_data);
     m_capacity = other.m_capacity;
     m_size = other.m_size;
 
