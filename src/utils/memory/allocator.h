@@ -11,10 +11,23 @@
 namespace yialite
 {
 
+namespace detail
+{
+    [[noreturn]] inline void out_of_memory() noexcept
+    {
+        YIALITE_ASSERT(false && "yialite: out of memory");
+        std::abort();
+    }
+}
+
 // raw (16byte aligned)
 [[nodiscard]] void *alloc_raw(size_t size) noexcept;
 [[nodiscard]] void *calloc_raw(size_t n, size_t size) noexcept;
 [[nodiscard]] void *realloc_raw(void *p, size_t size) noexcept;
+
+[[nodiscard]] void *try_alloc_raw(size_t size) noexcept;
+[[nodiscard]] void *try_calloc_raw(size_t n, size_t size) noexcept;
+[[nodiscard]] void *try_realloc_raw(void *p, size_t size) noexcept;
 void dealloc_raw(void *p) noexcept;
 
 // object

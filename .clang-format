@@ -1,6 +1,9 @@
 BasedOnStyle: LLVM
 BreakBeforeBraces: Allman
 IndentWidth: 4
+ContinuationIndentWidth: 4
+IndentAccessModifiers: true
+AccessModifierOffset: 0
 UseTab: Never
 AlignTrailingComments: true
 BraceWrapping:

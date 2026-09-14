@@ -2,6 +2,7 @@
 #include "miniaudio_adapter.h"
 #include "../../../core/error.h"
 #include "../../../core/logger.h"
+#include "../../../utils/utility.h"
 #include "../../../utils/memory/allocator.h"
 
 namespace yialite
@@ -110,7 +111,7 @@ void MiniaudioAdapter::update(float dt)
         if(should_release) release_voice(i);
     }
 
-    if (m_voices.need_shrink())
+    if (need_shrink(m_voices))
     {
         m_voices.shrink_to_fit();
         voice_count = m_voices.size();

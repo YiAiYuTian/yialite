@@ -17,6 +17,12 @@ constexpr StringView get_unique_type_sig() noexcept
     return raw;
 }
 
+template <typename Container>
+[[nodiscard]] bool need_shrink(const Container &c, std::size_t ratio = 4) noexcept
+{
+    return c.capacity() > c.size() * ratio;
+}
+
 }
 
 #endif
