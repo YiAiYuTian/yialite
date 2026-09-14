@@ -6,6 +6,7 @@
 
 #include <new>
 #include <utility>
+#include <cstdlib>
 #include <type_traits>
 
 namespace yialite

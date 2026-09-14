@@ -123,7 +123,7 @@ public:
                 ++it;
             }
 
-            if(handle_list.need_shrink()) handle_list.shrink_to_fit();
+            if(need_shrink(handle_list)) handle_list.shrink_to_fit();
         }
     }
 
