@@ -4,196 +4,113 @@
 #include "base_types.h"
 #include "handle.h"
 #include "string/yia_string.h"
+#include "string/yia_string_view.h"
 
-#include <cstring>
 #include <array>
 #include <bit>
+#include <cstddef>
+#include <type_traits>
 
 namespace yialite
 {
 
 namespace detail
 {
-    constexpr static size_t hash_key_hash = 14695981039346656037ULL;
-    constexpr static size_t hash_key_prime = 1099511628211ULL;
+    inline constexpr std::size_t FNV_OFFSET_BASIS = 14695981039346656037ULL;
+    inline constexpr std::size_t FNV_PRIME        = 1099511628211ULL;
+
+    template <typename Byte>
+    [[nodiscard]] constexpr std::size_t fnv1a(const Byte* data, std::size_t count) noexcept
+    {
+        std::size_t hash = FNV_OFFSET_BASIS;
+        for (std::size_t i = 0; i < count; ++i)
+        {
+            hash ^= static_cast<Uint8>(data[i]);
+            hash *= FNV_PRIME;
+        }
+        return hash;
+    }
+
+    template <typename T>
+    [[nodiscard]] constexpr std::size_t fnv1a_of(const T& value) noexcept
+    {
+        const auto bytes = std::bit_cast<std::array<Uint8, sizeof(T)>>(value);
+        return fnv1a(bytes.data(), bytes.size());
+    }
+
+    template <typename...>
+    inline constexpr bool always_false = false;
 }
 
-template<typename T>
+template <typename T>
 struct HashKey
 {
-    constexpr size_t operator()(const T& key) const noexcept = delete;
-};
-
-template<>
-struct HashKey<Sint8>
-{
-    constexpr size_t operator()(Sint8 key) const noexcept
+    [[nodiscard]] constexpr std::size_t operator()(const T& key) const noexcept
     {
-        return static_cast<size_t>(key);
-    }
-};
-
-template<>
-struct HashKey<Uint8>
-{
-    constexpr size_t operator()(Uint8 key) const noexcept
-    {
-        return static_cast<size_t>(key);
-    }
-};
-
-template<>
-struct HashKey<Sint16>
-{
-    constexpr size_t operator()(Sint16 key) const noexcept
-    {
-        return static_cast<size_t>(key);
-    }
-};
-
-template<>
-struct HashKey<Uint16>
-{
-    constexpr size_t operator()(Uint16 key) const noexcept
-    {
-        return static_cast<size_t>(key);
-    }
-};
-
-template<>
-struct HashKey<Sint32>
-{
-    constexpr size_t operator()(Sint32 key) const noexcept
-    {
-        return static_cast<size_t>(key);
-    }
-};
-
-template<>
-struct HashKey<Uint32>
-{
-    constexpr size_t operator()(Uint32 key) const noexcept
-    {
-        return static_cast<size_t>(key);
-    }
-};
-
-template<>
-struct HashKey<Sint64>
-{
-    constexpr size_t operator()(Sint64 key) const noexcept
-    {
-        return static_cast<size_t>(key);
-    }
-};
-
-template<>
-struct HashKey<Uint64>
-{
-    constexpr size_t operator()(Uint64 key) const noexcept
-    {
-        return static_cast<size_t>(key);
-    }
-};
-
-template<>
-struct HashKey<bool>
-{
-    constexpr size_t operator()(bool key) const noexcept
-    {
-        return static_cast<size_t>(key);
-    }
-};
-
-template<>
-struct HashKey<float>
-{
-    size_t operator()(float key) const noexcept
-    {
-        size_t result = 0;
-        static_assert(sizeof(float) <= sizeof(size_t));
-        memcpy(&result, &key, sizeof(float));
-        return result;
-    }
-};
-
-template<>
-struct HashKey<double>
-{
-    constexpr size_t operator()(double key) const noexcept
-    {
-        const auto bytes = std::bit_cast<std::array<Uint8, sizeof(double)>>(key);
-        size_t hash = detail::hash_key_hash;
-        for (Uint8 b : bytes)
+        if constexpr (std::is_pointer_v<T>)
         {
-            hash ^= b;
-            hash *= detail::hash_key_prime;
+            static_assert(sizeof(std::size_t) == sizeof(T),
+                          "HashKey: pointers on this target are not size_t wide, so their bits do not fit in a size_t");
+            return std::bit_cast<std::size_t>(key);
         }
-        return hash;
-    }
-};
-
-template<typename T>
-struct HashKey<T*>
-{
-    constexpr size_t operator()(T* ptr) const noexcept
-    {
-        return reinterpret_cast<size_t>(ptr);
-    }
-};
-
-template<>
-struct HashKey<const char*>
-{
-    constexpr size_t operator()(const char* str) const noexcept
-    {
-        if (!str) return 0;
-        size_t hash = detail::hash_key_hash;
-        while (*str)
+        else if constexpr (std::is_enum_v<T>)
         {
-            hash ^= static_cast<Uint8>(*str);
-            hash *= detail::hash_key_prime;
-            str++;
+            using Underlying = std::underlying_type_t<T>;
+            return HashKey<Underlying>{}(static_cast<Underlying>(key));
         }
-        return hash;
-    }
-};
-
-template<>
-struct HashKey<yialite::String>
-{
-    size_t operator()(const yialite::String& str) const noexcept
-    {
-        return HashKey<const char*>{}(str.c_str());
-    }
-};
-
-template<>
-struct HashKey<yialite::StringView>
-{
-    constexpr size_t operator()(yialite::StringView str) const noexcept
-    {
-        if (str.empty()) return 0;
-
-        size_t hash = detail::hash_key_hash;
-        for (size_t i = 0; i < str.length(); ++i)
+        else if constexpr (std::is_floating_point_v<T>)
         {
-            hash ^= static_cast<Uint8>(str[i]);
-            hash *= detail::hash_key_prime;
+            return detail::fnv1a_of(key);
         }
-        return hash;
+        else if constexpr (std::is_integral_v<T>)
+        {
+            if constexpr (sizeof(T) <= sizeof(std::size_t))
+            {
+                return static_cast<std::size_t>(key);
+            }
+            else
+            {
+                return detail::fnv1a_of(key);
+            }
+        }
+        else
+        {
+            static_assert(detail::always_false<T>,
+                          "HashKey<T>: no hash is defined for this type. Add a HashKey<T> "
+                          "specialisation next to the others in this header, and make it hash "
+                          "exactly what T's operator== compares.");
+            return 0;
+        }
     }
 };
 
-template<typename T, typename Tag>
-struct HashKey<yialite::Handle<T, Tag>>
+template <>
+struct HashKey<StringView>
 {
-    size_t operator()(const yialite::Handle<T, Tag>& h) const noexcept
+    [[nodiscard]] constexpr std::size_t operator()(const StringView& str) const noexcept
     {
-        return HashKey<T>{}(h.id);
+        return detail::fnv1a(str.data(), str.length());
     }
 };
 
-}
+template <>
+struct HashKey<String>
+{
+    [[nodiscard]] std::size_t operator()(const String& str) const noexcept
+    {
+        return HashKey<StringView>{}(StringView(str));
+    }
+};
 
-#endif
+template <typename T, typename Tag>
+struct HashKey<Handle<T, Tag>>
+{
+    [[nodiscard]] constexpr std::size_t operator()(const Handle<T, Tag>& handle) const noexcept
+    {
+        return HashKey<T>{}(handle.id);
+    }
+};
+
+} // namespace yialite
+
+#endif // YIALITE_HASH_KEY_H
