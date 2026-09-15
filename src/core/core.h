@@ -5,7 +5,7 @@
 
 #define YIALITE_API
 
-#ifdef _DEBUG
+#ifdef NDEBUG
     #define YIALITE_ASSERT(expression) assert(expression)
 #else
     #define YIALITE_ASSERT(expression) ((void)0)
