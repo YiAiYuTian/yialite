@@ -1,3 +1,25 @@
+function(yia_set_target_flags target)
+    target_compile_options(${target} PRIVATE $<$<CXX_COMPILER_ID:MSVC>:/utf-8>)
+endfunction()
+
+function(yia_add_executable target library)
+    if(NOT ARGN)
+        message(FATAL_ERROR "yia_add_executable(${target}): no sources given")
+    endif()
+
+    add_executable(${target} ${ARGN})
+    yia_set_target_flags(${target})
+    target_link_libraries(${target} PRIVATE ${library})
+endfunction()
+
+function(yia_add_test test_name target)
+    if(NOT TARGET ${target})
+        message(FATAL_ERROR "yia_add_test(${test_name}): no target named ${target}")
+    endif()
+
+    add_test(NAME ${test_name} COMMAND $<TARGET_FILE:${target}>)
+endfunction()
+
 function(yia_collect_link_dependencies targets_var libs_var packages_var)
   set(_pending ${ARGN})
   set(_visited "")
@@ -33,7 +55,6 @@ function(yia_collect_link_dependencies targets_var libs_var packages_var)
     elseif(_item MATCHES "^\\$<LINK_ONLY:(.*)>$")
       list(APPEND _pending "${CMAKE_MATCH_1}")
     elseif(_item MATCHES "^([A-Za-z0-9_]+)::")
-      # An imported target defined in a subdirectory, so invisible here.
       list(APPEND _plain "${_item}")
       list(APPEND _packages "${CMAKE_MATCH_1}")
     elseif(NOT _item MATCHES "^\\$<")

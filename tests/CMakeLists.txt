@@ -1,9 +1,7 @@
-add_executable(yialite_tests
-  src/main.cpp
-)
+yia_add_executable(yialite_tests yialite::core src/main.cpp)
+yia_add_test(core_smoke yialite_tests)
 
-target_compile_options(yialite_tests PRIVATE $<$<CXX_COMPILER_ID:MSVC>:/utf-8>)
+yia_add_executable(yialite_list_tests yialite::core src/list_tests.cpp)
+yia_add_test(list yialite_list_tests)
 
-target_link_libraries(yialite_tests PRIVATE yialite::core)
-
-add_test(NAME core_smoke COMMAND $<TARGET_FILE:yialite_tests>)
+yia_add_executable(yialite_bench yialite::core src/bench.cpp)

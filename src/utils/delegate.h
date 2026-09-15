@@ -27,7 +27,15 @@ public:
 
     Delegate() noexcept = default;
     Delegate(std::nullptr_t) noexcept : Delegate() {}
-    Delegate(const Delegate& other)
+
+    // noexcept, although cloning the stored callable is only nothrow if the
+    // callable itself is. The promise is deliberate: the engine runs without
+    // exceptions, so a throwing callable copy would terminate at the next
+    // frame boundary anyway. Declaring it here moves that termination to the
+    // point of the copy, which is where the stack still says whose callable it
+    // was. It is also what lets List<WrappedHandle> satisfy its move/copy
+    // requirements.
+    Delegate(const Delegate& other) noexcept
     {
         if (!other.m_callable) return;
 
@@ -58,10 +66,10 @@ public:
             else emplace_heap(std::forward<Fn>(func));
         }
     }
-    ~Delegate() { tidy(); }
+    ~Delegate() noexcept { tidy(); }
 
     //operators
-    Delegate& operator=(const Delegate& other)
+    Delegate& operator=(const Delegate& other) noexcept
     {
         if (this == &other) return *this;
 

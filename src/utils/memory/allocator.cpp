@@ -8,21 +8,21 @@ namespace yialite
 void *alloc_raw(size_t size) noexcept
 {
     void *raw = yia_malloc(size);
-    if (!raw) detail::out_of_memory();
+    if (!raw && size != 0) detail::out_of_memory();
     return raw;
 }
 
 void *calloc_raw(size_t n, size_t size) noexcept
 {
     void *raw = yia_calloc(n, size);
-    if (!raw) detail::out_of_memory();
+    if (!raw && n != 0 && size != 0) detail::out_of_memory();
     return raw;
 }
 
 void *realloc_raw(void *p, size_t size) noexcept
 {
     void *raw = yia_realloc(p, size);
-    if (!raw) detail::out_of_memory();
+    if (!raw && size != 0) detail::out_of_memory();
     return raw;
 }
 
