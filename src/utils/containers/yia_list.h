@@ -72,6 +72,17 @@ public:
         m_size = count;
     }
 
+    template <std::forward_iterator It>
+    List(It first, It last) noexcept
+    {
+        const size_type count = static_cast<size_type>(std::distance(first, last));
+        if (count == 0) return;
+
+        reserve(count);
+        std::uninitialized_copy(first, last, m_data);
+        m_size = count;
+    }
+
     template <std::input_iterator It>
     List(It first, It last) noexcept
     {
@@ -88,27 +99,9 @@ public:
         m_size = init.size();
     }
 
-    List(const List &other) noexcept
-    {
-        if (other.m_size == 0) return;
-
-        reserve(other.m_size);
-        if constexpr (std::is_trivially_copyable_v<value_type>)
-            std::memcpy(m_data, other.m_data, other.m_size * sizeof(value_type));
-        else
-            std::uninitialized_copy_n(other.m_data, other.m_size, m_data);
-        m_size = other.m_size;
-    }
-
-    List(List &&other) noexcept
-    {
-        steal(std::move(other));
-    }
-
-    ~List() noexcept
-    {
-        release();
-    }
+    List(const List &other) noexcept { copy_from(other); }
+    List(List &&other) noexcept { steal_from(std::move(other)); }
+    ~List() noexcept { release(); }
 
     // operators
     List &operator=(std::initializer_list<value_type> init) noexcept
@@ -123,17 +116,7 @@ public:
 
         std::destroy_n(m_data, m_size);
         m_size = 0;
-
-        reserve(other.m_size);
-        if (other.m_size != 0)
-        {
-            if constexpr (std::is_trivially_copyable_v<value_type>)
-                std::memcpy(m_data, other.m_data, other.m_size * sizeof(value_type));
-            else
-                std::uninitialized_copy_n(other.m_data, other.m_size, m_data);
-        }
-        m_size = other.m_size;
-
+        copy_from(other);
         return *this;
     }
 
@@ -142,7 +125,7 @@ public:
         if (this == &other) return *this;
 
         release();
-        steal(std::move(other));
+        steal_from(std::move(other));
         return *this;
     }
 
@@ -540,7 +523,7 @@ private:
 
     size_type grow_to(size_type needed) const noexcept
     {
-        size_type grown = m_capacity > CAPACITY_FLOOR ? m_capacity : CAPACITY_FLOOR;
+        size_type grown = m_capacity > MIN_CAPACITY ? m_capacity : MIN_CAPACITY;
 
         while (grown < needed)
         {
@@ -568,7 +551,19 @@ private:
         m_capacity = 0;
     }
 
-    void steal(List &&other) noexcept
+    void copy_from(const List &other) noexcept
+    {
+        if (other.m_size == 0) return;
+
+        reserve(other.m_size);
+        if constexpr (std::is_trivially_copyable_v<value_type>)
+            std::memcpy(m_data, other.m_data, other.m_size * sizeof(value_type));
+        else
+            std::uninitialized_copy_n(other.m_data, other.m_size, m_data);
+        m_size = other.m_size;
+    }
+
+    void steal_from(List &&other) noexcept
     {
         m_size = other.m_size;
         m_capacity = other.m_capacity;
@@ -591,13 +586,13 @@ private:
     }
 
 public:
-    static constexpr size_type CAPACITY_FLOOR = 8;
+    static constexpr size_type MIN_CAPACITY = 8;
 private:
     value_type *m_data = nullptr;
     size_type   m_size = 0;
     size_type   m_capacity = 0;
 };
 
-}
+} // namespace yialite
 
 #endif // !YIALITE_LIST_H

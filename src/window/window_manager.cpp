@@ -50,36 +50,36 @@ WindowID WindowManager::create_window(const WindowConfig &config)
 
 void WindowManager::destroy_window(WindowID id)
 {
-    auto window = m_windows.find(id);
-    if(!window) return;
+    auto it = m_windows.find(id);
+    if(it == m_windows.end()) return;
 
-    (*window)->destroy();
-    dealloc_obj(*window);
-    m_windows.remove(id);
+    it->second->destroy();
+    dealloc_obj(it->second);
+    m_windows.erase(it);
 }
 
 IWindow *WindowManager::get_window(WindowID id)
 {
-    auto window = m_windows.find(id);
-    if(!window) return nullptr;
+    auto it = m_windows.find(id);
+    if(it == m_windows.end()) return nullptr;
 
-    return *window;
+    return it->second;
 }
 
 void* WindowManager::get_native_handle(WindowID id)
 {
-    auto window = m_windows.find(id);
-    if(!window) return nullptr;
+    auto it = m_windows.find(id);
+    if(it == m_windows.end()) return nullptr;
 
-    return (*window)->get_native_handle();
+    return it->second->get_native_handle();
 }
 
 const void *WindowManager::get_native_handle(WindowID id) const
 {
-    auto window = m_windows.find(id);
-    if(!window) return nullptr;
+    auto it = m_windows.find(id);
+    if(it == m_windows.end()) return nullptr;
 
-    return (*window)->get_native_handle();
+    return it->second->get_native_handle();
 }
 
 }

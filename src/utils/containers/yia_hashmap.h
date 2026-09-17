@@ -1,466 +1,655 @@
 ﻿#ifndef YIALITE_HASHMAP_H
 #define YIALITE_HASHMAP_H
 
-#include "../../core/core.h"
 #include "../hash_key.h"
 #include "../memory/allocator.h"
 #include "yia_pair.h"
 
+#include <cstddef>
+#include <cstring>
+#include <initializer_list>
+#include <iterator>
+#include <limits>
+#include <memory>
+#include <type_traits>
+#include <utility>
+
 namespace yialite
 {
 
-template<typename Key, typename Value>
+template <typename Key, typename Value>
 class HashMap
 {
+    static_assert(std::is_object_v<Key> && !std::is_const_v<Key>, "HashMap<K, V>: K must be a non-const object type");
+    static_assert(std::is_object_v<Value> && !std::is_const_v<Value>, "HashMap<K, V>: V must be a non-const object type");
+    static_assert(alignof(Pair<Key, Value>) <= 16, "HashMap<K, V>: slots need alignment >16, yia_malloc is only 16-byte aligned");
+    static_assert(std::is_nothrow_move_constructible_v<Pair<Key, Value>>, "HashMap<K, V>: K and V must be nothrow move constructible");
+    static_assert(std::is_nothrow_destructible_v<Pair<Key, Value>>, "HashMap<K, V>: K and V must be nothrow destructible");
+    static_assert(std::is_nothrow_copy_constructible_v<Pair<Key, Value>>, "HashMap<K, V>: K and V must be nothrow copy constructible");
+
 public:
-    class Iterator
+    using key_type        = Key;
+    using mapped_type     = Value;
+    using value_type      = Pair<Key, Value>;
+    using size_type       = std::size_t;
+    using difference_type = std::ptrdiff_t;
+    using reference       = value_type &;
+    using const_reference = const value_type &;
+    using pointer         = value_type *;
+    using const_pointer   = const value_type *;
+
+private:
+    enum class SlotState : Uint8
     {
+        Empty     = 0,
+        Occupied  = 1,
+        Tombstone = 2
+    };
+
+    struct SlotRef
+    {
+        size_type index;
+        bool      found;
+    };
+
+    template <bool Const>
+    class IteratorBase
+    {
+        friend class HashMap;
+        template <bool>
+        friend class IteratorBase;
+
     public:
-        Iterator() : m_map(nullptr), m_index(0) {}
+        using value_type        = HashMap::value_type;
+        using difference_type   = HashMap::difference_type;
+        using iterator_category = std::forward_iterator_tag;
+        using reference         = std::conditional_t<Const, const value_type &, value_type &>;
+        using pointer           = std::conditional_t<Const, const value_type *, value_type *>;
 
-        Iterator(HashMap* map, size_t index)
-            : m_map(map), m_index(index) { advance_to_next(); }
+        IteratorBase() noexcept = default;
 
-        struct DirectTag {};
-        Iterator(HashMap* map, size_t index, DirectTag) : m_map(map), m_index(index) {}
-
-        Pair<const Key, Value>& operator*() const
+        template <bool OtherConst>
+        requires (Const && !OtherConst)
+        IteratorBase(const IteratorBase<OtherConst> &other) noexcept
+            : m_slots(other.m_slots),
+              m_states(other.m_states),
+              m_capacity(other.m_capacity),
+              m_index(other.m_index)
         {
-            return m_map->m_pairs[m_index];
         }
 
-        Pair<const Key, Value>* operator->() const
-        {
-            return &m_map->m_pairs[m_index];
-        }
+        [[nodiscard]] reference operator*() const noexcept { return m_slots[m_index]; }
+        [[nodiscard]] pointer operator->() const noexcept { return m_slots + m_index; }
 
-        Iterator& operator++()
+        IteratorBase &operator++() noexcept
         {
             ++m_index;
-            advance_to_next();
+            skip_gaps();
             return *this;
         }
 
-        Iterator operator++(int)
+        IteratorBase operator++(int) noexcept
         {
-            Iterator tmp = *this;
+            IteratorBase tmp = *this;
             ++(*this);
             return tmp;
         }
 
-        bool operator==(const Iterator& other) const
+        [[nodiscard]] bool operator==(const IteratorBase &other) const noexcept
         {
-            return m_index == other.m_index;
-        }
-
-        bool operator!=(const Iterator& other) const
-        {
-            return !(*this == other);
+            return m_slots == other.m_slots && m_index == other.m_index;
         }
 
     private:
-        void advance_to_next()
+        using SlotPtr  = std::conditional_t<Const, const value_type *, value_type *>;
+        using StatePtr = std::conditional_t<Const, const SlotState *, SlotState *>;
+
+        IteratorBase(SlotPtr slots, StatePtr states, size_type capacity, size_type index) noexcept
+            : m_slots(slots), m_states(states), m_capacity(capacity), m_index(index)
         {
-            while (m_index < m_map->m_capacity &&
-                   m_map->m_states[m_index] != BucketState::Occupied)
+            skip_gaps();
+        }
+
+        void skip_gaps() noexcept
+        {
+            while (m_index < m_capacity && m_states[m_index] != SlotState::Occupied)
             {
                 ++m_index;
             }
         }
+
     private:
-        HashMap* m_map;
-        size_t   m_index;
+        SlotPtr   m_slots    = nullptr;
+        StatePtr  m_states   = nullptr;
+        size_type m_capacity = 0;
+        size_type m_index    = 0;
     };
 
 public:
-    HashMap();
-    HashMap(size_t capacity);
-    HashMap(HashMap&& other) noexcept;
-    HashMap(const HashMap& other);
-    ~HashMap();
+    using iterator       = IteratorBase<false>;
+    using const_iterator = IteratorBase<true>;
 
-    //operators
-    Value& operator[](const Key& key);
-    Value& operator[](Key&& key);
-    const Value& operator[](const Key& key) const;
-    HashMap& operator=(HashMap&& other) noexcept;
-    HashMap& operator=(const HashMap& other);
+    HashMap() noexcept = default;
 
-    //tools
-    void clear();
-    void reserve(size_t capacity);
-    void swap(HashMap& other) noexcept;
-    Iterator emplace(Key&& key, Value&& value);
-    Iterator insert(const Key& key, const Value& value);
-    bool find(const Key& key, Value** value) const;
-    Value* find(const Key& key) const;
-    bool remove(const Key& key);
-    bool contains_key(const Key& key) const;
-
-    bool empty() const noexcept { return m_size == 0; }
-    size_t size() const noexcept { return m_size; }
-    size_t capacity() const noexcept { return m_capacity; }
-
-    Iterator begin() { return Iterator(this, 0); }
-    Iterator end()   { return Iterator(this, m_capacity); }
-public:
-    constexpr static size_t invalid_index = static_cast<size_t>(-1);
-private:
-    Pair<bool, size_t> find_bucket(const Key& key) const;
-    void resize();
-    size_t hash(const Key& key) const;
-    void reset_states(Uint8* states, size_t capacity);
-private:
-    enum BucketState : Uint8
+    explicit HashMap(size_type bucket_count) noexcept
     {
-        Empty    = 0,
-        Occupied = 1,
-        Deleted  = 2
-    };
-private:
-    Pair<const Key, Value>* m_pairs  = nullptr;
-    Uint8*            m_states = nullptr;
-    size_t            m_size   = 0;
-    size_t            m_capacity = 0;
-    constexpr static float m_load_factor = 0.75f;
-};
+        const size_type cap = bucket_need(bucket_count);
+        if (cap == 0 || !try_rehash(cap)) detail::out_of_memory();
+    }
 
-template<typename Key, typename Value>
-HashMap<Key, Value>::HashMap()
-{
-    reserve(8);
-}
-
-template<typename Key, typename Value>
-HashMap<Key, Value>::HashMap(size_t capacity)
-{
-    if (capacity == 0) capacity = 8;
-    reserve(capacity);
-}
-
-template<typename Key, typename Value>
-HashMap<Key, Value>::HashMap(HashMap&& other) noexcept
-    : m_pairs(other.m_pairs),
-      m_states(other.m_states),
-      m_size(other.m_size),
-      m_capacity(other.m_capacity)
-{
-    other.m_pairs    = nullptr;
-    other.m_states   = nullptr;
-    other.m_size     = 0;
-    other.m_capacity = 0;
-}
-
-template<typename Key, typename Value>
-HashMap<Key, Value>::HashMap(const HashMap& other)
-{
-    reserve(other.m_capacity > 0 ? other.m_capacity : 8);
-
-    for (size_t i = 0; i < other.m_capacity; ++i)
+    HashMap(std::initializer_list<value_type> init) noexcept
     {
-        if (other.m_states[i] == BucketState::Occupied)
+        if (init.size() == 0) return;
+
+        const size_type needed = bucket_need(init.size());
+        if (needed == 0 || !try_rehash(needed)) detail::out_of_memory();
+
+        for (const value_type &kv : init)
+            insert(kv.first, kv.second);
+    }
+
+    template <std::forward_iterator It>
+    HashMap(It first, It last) noexcept
+    {
+        const size_type count = static_cast<size_type>(std::distance(first, last));
+        if (count == 0) return;
+
+        reserve(count);
+        for (; first != last; ++first)
+            insert(first->first, first->second);
+    }
+
+    template <std::input_iterator It>
+    HashMap(It first, It last) noexcept
+    {
+        for (; first != last; ++first)
+            insert(first->first, first->second);
+    }
+
+    HashMap(const HashMap &other) noexcept { copy_from(other); }
+    HashMap(HashMap &&other) noexcept { steal_from(std::move(other)); }
+    ~HashMap() noexcept { release(); }
+
+    // operators
+    HashMap &operator=(const HashMap &other) noexcept
+    {
+        if (this == &other) return *this;
+        copy_from(other);
+        return *this;
+    }
+
+    HashMap &operator=(HashMap &&other) noexcept
+    {
+        if (this == &other) return *this;
+        release();
+        steal_from(std::move(other));
+        return *this;
+    }
+
+    bool operator==(const HashMap &other) const noexcept
+    {
+        if (this == &other) return true;
+        if (m_size != other.m_size) return false;
+
+        for (auto &[k, v] : *this)
         {
-            emplace(Key(other.m_pairs[i].first), Value(other.m_pairs[i].second));
+            const Value *v_other = other.find_value(k);
+            if (!v_other || *v_other != v) return false;
+        }
+
+        return true;
+    }
+
+    mapped_type &operator[](const Key &key) noexcept
+    {
+        const SlotRef ref = prepare_slot(key);
+        if (ref.found) return m_slots[ref.index].second;
+
+        std::construct_at(m_slots + ref.index, key, Value{});
+        occupy(ref.index);
+        return m_slots[ref.index].second;
+    }
+
+    mapped_type &operator[](Key &&key) noexcept
+    {
+        const SlotRef ref = prepare_slot(key);
+        if (ref.found) return m_slots[ref.index].second;
+
+        std::construct_at(m_slots + ref.index, std::move(key), Value{});
+        occupy(ref.index);
+        return m_slots[ref.index].second;
+    }
+
+    // tools
+    [[nodiscard]] iterator begin() noexcept { return make_iterator(0); }
+    [[nodiscard]] iterator end() noexcept { return make_iterator(m_capacity); }
+    [[nodiscard]] const_iterator begin() const noexcept { return make_const_iterator(0); }
+    [[nodiscard]] const_iterator end() const noexcept { return make_const_iterator(m_capacity); }
+    [[nodiscard]] const_iterator cbegin() const noexcept { return begin(); }
+    [[nodiscard]] const_iterator cend() const noexcept { return end(); }
+    
+    [[nodiscard]] bool empty() const noexcept { return m_size == 0; }
+
+    [[nodiscard]] size_type capacity() const noexcept { return m_capacity; }
+    [[nodiscard]] static constexpr size_type max_capacity() noexcept
+    {
+        const size_type limit = static_cast<size_type>(std::numeric_limits<difference_type>::max()) / sizeof(value_type);
+
+        size_type cap = MIN_CAPACITY;
+        while (cap <= limit / 2) cap <<= 1;
+        return cap;
+    }
+
+    [[nodiscard]] size_type size() const noexcept { return m_size; }
+    [[nodiscard]] constexpr static size_type max_size() noexcept
+    {
+        const size_type cap = max_capacity();
+        return cap - cap / LOAD_DEN;
+    }
+
+    [[nodiscard]] float load_factor() const noexcept
+    {
+        if (m_capacity == 0) return 0.0f;
+        return static_cast<float>(m_size) / static_cast<float>(m_capacity);
+    }
+    [[nodiscard]] static constexpr float max_load_factor() noexcept { return LOAD_FACTOR; }
+
+    [[nodiscard]] bool try_reserve(size_type count) noexcept
+    {
+        const size_type free_slots = m_capacity - m_capacity / LOAD_DEN;
+        if (count <= free_slots) return true;
+
+        const size_type needed = bucket_need(count);
+        if (needed == 0) return false;
+        return try_rehash(needed);
+    }
+
+    void reserve(size_type count) noexcept
+    {
+        if (!try_reserve(count))
+            detail::out_of_memory();
+    }
+
+    void shrink_to_fit() noexcept
+    {
+        if (m_size == 0)
+        {
+            release();
+            return;
+        }
+
+        const size_type needed = bucket_need(m_size);
+        if (needed == 0 || needed >= m_capacity) return;
+
+        (void)try_rehash(needed);
+    }
+
+    template <typename... Args>
+    Pair<iterator, bool> try_emplace(const Key &key, Args &&...args) noexcept
+    {
+        const SlotRef ref = prepare_slot(key);
+        if (ref.found) return { make_iterator(ref.index), false };
+
+        std::construct_at(m_slots + ref.index, detail::PiecewiseConstructTag{}, key, std::forward<Args>(args)...);
+        occupy(ref.index);
+        return { make_iterator(ref.index), true };
+    }
+
+    template <typename... Args>
+    Pair<iterator, bool> try_emplace(Key &&key, Args &&...args) noexcept
+    {
+        const SlotRef ref = prepare_slot(key);
+        if (ref.found) return { make_iterator(ref.index), false };
+
+        std::construct_at(m_slots + ref.index, detail::PiecewiseConstructTag{}, std::move(key), std::forward<Args>(args)...);
+        occupy(ref.index);
+        return { make_iterator(ref.index), true };
+    }
+
+    template <typename... Args>
+    Pair<iterator, bool> emplace(Args &&...args) noexcept
+    {
+        value_type staged(std::forward<Args>(args)...);
+
+        const SlotRef ref = prepare_slot(staged.first);
+        if (ref.found) return { make_iterator(ref.index), false };
+
+        std::construct_at(m_slots + ref.index, std::move(staged.first), std::move(staged.second));
+        occupy(ref.index);
+        return { make_iterator(ref.index), true };
+    }
+
+    Pair<iterator, bool> insert_or_assign(const Key &key, Value &&value) noexcept
+    {
+        const SlotRef ref = prepare_slot(key);
+        if (ref.found)
+        {
+            m_slots[ref.index].second = std::move(value);
+            return { make_iterator(ref.index), false };
+        }
+
+        std::construct_at(m_slots + ref.index, key, std::move(value));
+        occupy(ref.index);
+        return { make_iterator(ref.index), true };
+    }
+
+    Pair<iterator, bool> insert(const Key &key, const Value &value) noexcept
+    {
+        const SlotRef ref = prepare_slot(key);
+        if (ref.found) return { make_iterator(ref.index), false };
+
+        std::construct_at(m_slots + ref.index, key, value);
+        occupy(ref.index);
+        return { make_iterator(ref.index), true };
+    }
+
+    Pair<iterator, bool> insert(const Key &key, Value &&value) noexcept
+    {
+        const SlotRef ref = prepare_slot(key);
+        if (ref.found) return { make_iterator(ref.index), false };
+
+        std::construct_at(m_slots + ref.index, key, std::move(value));
+        occupy(ref.index);
+        return { make_iterator(ref.index), true };
+    }
+
+    Pair<iterator, bool> insert(Key &&key, Value &&value) noexcept
+    {
+        const SlotRef ref = prepare_slot(key);
+        if (ref.found) return { make_iterator(ref.index), false };
+
+        std::construct_at(m_slots + ref.index, std::move(key), std::move(value));
+        occupy(ref.index);
+        return { make_iterator(ref.index), true };
+    }
+
+    Pair<iterator, bool> insert(const value_type &kv) noexcept
+    {
+        return insert(kv.first, kv.second);
+    }
+
+    Pair<iterator, bool> insert(value_type &&kv) noexcept
+    {
+        return insert(std::move(kv.first), std::move(kv.second));
+    }
+
+    template <std::forward_iterator It>
+    void insert(It first, It last) noexcept
+    {
+        const size_type count = static_cast<size_type>(std::distance(first, last));
+        if (count != 0) reserve(m_size + count);
+
+        for (; first != last; ++first)
+            insert(first->first, first->second);
+    }
+
+    template <std::input_iterator It>
+    void insert(It first, It last) noexcept
+    {
+        for (; first != last; ++first)
+            insert(first->first, first->second);
+    }
+
+    [[nodiscard]] iterator find(const Key &key) noexcept
+    {
+        const SlotRef ref = find_slot(key);
+        return ref.found ? make_iterator(ref.index) : end();
+    }
+
+    [[nodiscard]] const_iterator find(const Key &key) const noexcept
+    {
+        const SlotRef ref = find_slot(key);
+        return ref.found ? make_const_iterator(ref.index) : end();
+    }
+
+    [[nodiscard]] mapped_type *find_value(const Key &key) noexcept
+    {
+        const SlotRef ref = find_slot(key);
+        return ref.found ? &m_slots[ref.index].second : nullptr;
+    }
+
+    [[nodiscard]] const mapped_type *find_value(const Key &key) const noexcept
+    {
+        const SlotRef ref = find_slot(key);
+        return ref.found ? &m_slots[ref.index].second : nullptr;
+    }
+
+    [[nodiscard]] bool contains(const Key &key) const noexcept
+    {
+        return find_slot(key).found;
+    }
+
+    size_type erase(const Key &key) noexcept
+    {
+        const SlotRef ref = find_slot(key);
+        if (!ref.found) return 0;
+
+        std::destroy_at(m_slots + ref.index);
+        tombstone(ref.index);
+        return 1;
+    }
+
+    iterator erase(iterator pos) noexcept
+    {
+        YIALITE_ASSERT(pos.m_slots == m_slots && "HashMap::erase with a foreign iterator");
+        YIALITE_ASSERT(pos.m_index < m_capacity && "HashMap::erase at end() or after end()");
+
+        std::destroy_at(m_slots + pos.m_index);
+        tombstone(pos.m_index);
+
+        return make_iterator(pos.m_index + 1);
+    }
+
+    iterator erase(const_iterator pos) noexcept
+    {
+        YIALITE_ASSERT(pos.m_slots == m_slots && "HashMap::erase with a foreign iterator");
+        YIALITE_ASSERT(pos.m_index < m_capacity && "HashMap::erase at end() or after end()");
+
+        std::destroy_at(m_slots + pos.m_index);
+        tombstone(pos.m_index);
+
+        return make_iterator(pos.m_index + 1);
+    }
+
+    void clear() noexcept
+    {
+        if (m_capacity == 0) return;
+
+        for (size_type i = 0; i < m_capacity; ++i)
+        {
+            if (m_states[i] == SlotState::Occupied)
+                std::destroy_at(m_slots + i);
+        }
+
+        std::memset(m_states, 0, m_capacity * sizeof(SlotState));
+        m_size = 0;
+    }
+
+    void swap(HashMap &other) noexcept
+    {
+        std::swap(m_slots, other.m_slots);
+        std::swap(m_states, other.m_states);
+        std::swap(m_size, other.m_size);
+        std::swap(m_capacity, other.m_capacity);
+    }
+
+    // friend
+    friend void swap(HashMap &a, HashMap &b) noexcept { a.swap(b); }
+private:
+    [[nodiscard]] iterator make_iterator(size_type index) noexcept
+    {
+        return iterator(m_slots, m_states, m_capacity, index);
+    }
+    
+    [[nodiscard]] const_iterator make_const_iterator(size_type index) const noexcept
+    {
+        return const_iterator(m_slots, m_states, m_capacity, index);
+    }
+
+    [[nodiscard]] static size_type bucket_need(size_type elements) noexcept
+    {
+        size_type cap = MIN_CAPACITY;
+        while (cap - cap / LOAD_DEN < elements)
+        {
+            if (cap > max_capacity() / 2) return 0;
+            cap <<= 1;
+        }
+        return cap;
+    }
+
+    [[nodiscard]] static constexpr bool is_pow2(size_type n) noexcept
+    {
+        return n != 0 && (n & (n - 1)) == 0;
+    }
+
+    [[nodiscard]] SlotRef find_slot(const Key &key) const noexcept
+    {
+        if (m_capacity == 0) return { 0, false };
+
+        const size_type mask  = m_capacity - 1;
+        const size_type start = HashKey<Key>{}(key) & mask;
+
+        size_type idx        = start;
+        size_type first_tomb = NPOS;
+
+        for (;;)
+        {
+            const SlotState state = m_states[idx];
+
+            if (state == SlotState::Empty)
+                return { first_tomb != NPOS ? first_tomb : idx, false };
+
+            if (state == SlotState::Tombstone)
+            {
+                if (first_tomb == NPOS) first_tomb = idx;
+            }
+            else if (m_slots[idx].first == key)
+            {
+                return { idx, true };
+            }
+
+            idx = (idx + 1) & mask;
+            if (idx == start) return { first_tomb != NPOS ? first_tomb : NPOS, false };
         }
     }
-}
 
-template<typename Key, typename Value>
-HashMap<Key, Value>::~HashMap()
-{
-    clear();
+    [[nodiscard]] SlotRef prepare_slot(const Key &key) noexcept
+    {
+        reserve(m_size + 1);
+        
+        const SlotRef ref = find_slot(key);
+        YIALITE_ASSERT(ref.index != NPOS && "HashMap is full");
+        return ref;
+    }
 
-    dealloc_raw(m_pairs);
-    dealloc_raw(m_states);
-}
+    void occupy(size_type index) noexcept
+    {
+        m_states[index] = SlotState::Occupied;
+        ++m_size;
+    }
 
-template<typename Key, typename Value>
-HashMap<Key, Value>& HashMap<Key, Value>::operator=(HashMap&& other) noexcept
-{
-    if (this != &other)
+    void tombstone(size_type index) noexcept
+    {
+        m_states[index] = SlotState::Tombstone;
+        --m_size;
+    }
+
+    [[nodiscard]] bool try_rehash(size_type new_capacity) noexcept
+    {
+        if (new_capacity == m_capacity) return true;
+        if (new_capacity > max_capacity()) return false;
+        if (new_capacity < MIN_CAPACITY) return false;
+        YIALITE_ASSERT(is_pow2(new_capacity) && "HashMap rehash wants a power of two");
+
+        value_type *fresh_slots = static_cast<value_type *>(try_alloc_raw(new_capacity * sizeof(value_type)));
+        if (!fresh_slots) return false;
+
+        SlotState *fresh_states = static_cast<SlotState *>(try_alloc_raw(new_capacity * sizeof(SlotState)));
+        if (!fresh_states)
+        {
+            dealloc_raw(fresh_slots);
+            return false;
+        }
+        std::memset(fresh_states, 0, new_capacity * sizeof(SlotState));
+
+        const size_type mask = new_capacity - 1;
+        for (size_type i = 0; i < m_capacity; ++i)
+        {
+            if (m_states[i] != SlotState::Occupied) continue;
+
+            size_type idx = HashKey<Key>{}(m_slots[i].first) & mask;
+            while (fresh_states[idx] == SlotState::Occupied)
+                idx = (idx + 1) & mask;
+
+            std::construct_at(fresh_slots + idx, std::move(m_slots[i].first), std::move(m_slots[i].second));
+            std::destroy_at(m_slots + i);
+            fresh_states[idx] = SlotState::Occupied;
+        }
+
+        dealloc_raw(m_slots);
+        dealloc_raw(m_states);
+
+        m_slots    = fresh_slots;
+        m_states   = fresh_states;
+        m_capacity = new_capacity;
+        return true;
+    }
+
+    void copy_from(const HashMap &other) noexcept
     {
         clear();
-        dealloc_raw(m_pairs);
-        dealloc_raw(m_states);alloc_raw    = other.m_pairs;
+        reserve(other.m_size);
+
+        for (size_type i = 0; i < other.m_capacity; ++i)
+        {
+            if (other.m_states[i] != SlotState::Occupied) continue;
+
+            const SlotRef ref = find_slot(other.m_slots[i].first);
+            YIALITE_ASSERT(ref.index != NPOS && "HashMap::copy_from ran out of slots");
+
+            std::construct_at(m_slots + ref.index, other.m_slots[i].first, other.m_slots[i].second);
+            occupy(ref.index);
+        }
+    }
+
+    void release() noexcept
+    {
+        clear();
+
+        dealloc_raw(m_slots);
+        dealloc_raw(m_states);
+
+        m_slots    = nullptr;
+        m_states   = nullptr;
+        m_capacity = 0;
+    }
+
+    void steal_from(HashMap &&other) noexcept
+    {
+        m_slots    = other.m_slots;
         m_states   = other.m_states;
         m_size     = other.m_size;
         m_capacity = other.m_capacity;
 
-        other.m_pairs    = nullptr;
+        other.m_slots    = nullptr;
         other.m_states   = nullptr;
         other.m_size     = 0;
         other.m_capacity = 0;
     }
-    return *this;
-}
 
-template<typename Key, typename Value>
-HashMap<Key, Value>& HashMap<Key, Value>::operator=(const HashMap& other)
-{
-    if (this != &other)
-    {
-        clear();
+private:
+    static constexpr size_type MIN_CAPACITY = 8;
+    static constexpr size_type LOAD_NUM     = 3;
+    static constexpr size_type LOAD_DEN     = 4;
+    static constexpr float     LOAD_FACTOR  = static_cast<float>(LOAD_NUM) / static_cast<float>(LOAD_DEN);
+    static constexpr size_type NPOS         = static_cast<size_type>(-1);
+private:
+    value_type *m_slots    = nullptr;
+    SlotState  *m_states   = nullptr;
+    size_type   m_size     = 0;
+    size_type   m_capacity = 0;
+};
 
-        if (m_capacity < other.m_size) reserve(other.m_capacity > 0 ? other.m_capacity : 8);
-        reset_states(m_states, m_capacity);
-        m_size = 0;
+} // namespace yialite
 
-        for (size_t i = 0; i < other.m_capacity; ++i)
-        {
-            if (other.m_states[i] == BucketState::Occupied)
-            {
-                emplace(Key(other.m_pairs[i].first), Value(other.m_pairs[i].second));
-            }
-        }
-    }
-    return *this;
-}
-
-template<typename Key, typename Value>
-Value& HashMap<Key, Value>::operator[](const Key& key)
-{
-    auto [found, idx] = find_bucket(key);
-    YIALITE_ASSERT(idx != invalid_index && "HashMap Full");
-
-    if (!found) return emplace(Key(key), Value{})->second;
-    return m_pairs[idx].second;
-}
-
-template<typename Key, typename Value>
-Value& HashMap<Key, Value>::operator[](Key&& key)
-{
-    auto [found, idx] = find_bucket(key);
-    YIALITE_ASSERT(idx != invalid_index && "HashMap Full");
-
-    if (!found) return emplace(std::move(key), Value{})->second;
-    return m_pairs[idx].second;
-}
-
-template<typename Key, typename Value>
-const Value& HashMap<Key, Value>::operator[](const Key& key) const
-{
-    auto [found, idx] = find_bucket(key);
-    YIALITE_ASSERT(found && "Key not found in const HashMap");
-    return m_pairs[idx].second;
-}
-
-template<typename Key, typename Value>
-typename HashMap<Key, Value>::Iterator HashMap<Key, Value>::emplace(Key&& key, Value&& value)
-{
-    if ((m_size + 1.0f) > m_capacity * m_load_factor) resize();
-
-    auto [found, idx] = find_bucket(key);
-    YIALITE_ASSERT(idx != invalid_index && "HashMap Full");
-
-    if (!found)
-    {
-        new (&m_pairs[idx]) Pair<const Key, Value>(std::move(key), std::move(value));
-        m_states[idx] = BucketState::Occupied;
-        ++m_size;
-    }
-    else
-    {
-        m_pairs[idx].second = std::move(value);
-    }
-
-    return Iterator(this, idx, typename Iterator::DirectTag{});
-}
-
-template<typename Key, typename Value>
-typename HashMap<Key, Value>::Iterator HashMap<Key, Value>::insert(const Key& key, const Value& value)
-{
-    if ((m_size + 1.0f) > m_capacity * m_load_factor) resize();
-
-    auto [found, idx] = find_bucket(key);
-    YIALITE_ASSERT(idx != invalid_index && "HashMap Full");
-
-    if (!found)
-    {
-        new (&m_pairs[idx]) Pair<const Key, Value>(key, value);
-        m_states[idx] = BucketState::Occupied;
-        ++m_size;
-    }
-    else
-    {
-        m_pairs[idx].second = value;
-    }
-
-    return Iterator(this, idx, typename Iterator::DirectTag{});
-}
-
-template<typename Key, typename Value>
-bool HashMap<Key, Value>::find(const Key& key, Value** value) const
-{
-    auto [found, idx] = find_bucket(key);
-    YIALITE_ASSERT(idx != invalid_index && "HashMap Full");
-
-    if (found)
-    {
-        if(value) *value = &m_pairs[idx].second;
-        return true;
-    }
-
-    return false;
-}
-
-template<typename Key, typename Value>
-Value* HashMap<Key, Value>::find(const Key& key) const
-{
-    auto [found, idx] = find_bucket(key);
-
-    if (found)
-        return &m_pairs[idx].second;
-
-    return nullptr;
-}
-
-template<typename Key, typename Value>
-bool HashMap<Key, Value>::remove(const Key& key)
-{
-    auto [found, idx] = find_bucket(key);
-    YIALITE_ASSERT(idx != invalid_index && "HashMap Full");
-
-    if (!found) return false;
-
-    m_pairs[idx].first.~Key();
-    m_pairs[idx].second.~Value();
-
-    m_states[idx] = BucketState::Deleted;
-    --m_size;
-
-    return true;
-}
-
-template<typename Key, typename Value>
-bool HashMap<Key, Value>::contains_key(const Key& key) const
-{
-    auto [found, idx] = find_bucket(key);
-    return found;
-}
-
-template<typename Key, typename Value>
-void HashMap<Key, Value>::clear()
-{
-    for (size_t i = 0; i < m_capacity; ++i)
-    {
-        if (m_states[i] == BucketState::Occupied)
-        {
-            m_pairs[i].first.~Key();
-            m_pairs[i].second.~Value();
-        }
-    }
-
-    reset_states(m_states, m_capacity);
-    m_size = 0;
-}
-
-template<typename Key, typename Value>
-void HashMap<Key, Value>::reserve(size_t capacity)
-{
-    size_t new_capacity = 8;
-    while (new_capacity < capacity)
-    {
-        new_capacity <<= 1;
-    }
-    if (new_capacity <= m_capacity) return;
-
-    size_t saved_size = m_size;
-
-    Pair<const Key, Value>* new_pairs  = static_cast<Pair<const Key, Value>*>(alloc_raw(new_capacity * sizeof(Pair<const Key, Value>)));
-    Uint8* new_states = static_cast<Uint8*>(alloc_raw(new_capacity * sizeof(Uint8)));
-
-    reset_states(new_states, new_capacity);
-
-    for (size_t i = 0; i < m_capacity; ++i)
-    {
-        if (m_states[i] == BucketState::Occupied)
-        {
-            size_t raw_hash = HashKey<Key>{}(m_pairs[i].first);
-            size_t idx = raw_hash & (new_capacity - 1);
-
-            while (new_states[idx] == BucketState::Occupied)
-                idx = (idx + 1) % new_capacity;
-
-            new (&new_pairs[idx]) Pair<const Key, Value>(std::move(m_pairs[i].first), std::move(m_pairs[i].second));
-            m_pairs[i].first.~Key();
-            m_pairs[i].second.~Value();
-            new_states[idx] = BucketState::Occupied;
-        }
-    }
-
-    dealloc_raw(m_pairs);
-    dealloc_raw(m_states);
-
-    m_pairs    = new_pairs;
-    m_states   = new_states;
-    m_capacity = new_capacity;
-    m_size     = saved_size;
-}
-
-template<typename Key, typename Value>
-void HashMap<Key, Value>::swap(HashMap<Key, Value>& other) noexcept
-{
-    std::swap(m_pairs, other.m_pairs);
-    std::swap(m_states, other.m_states);
-    std::swap(m_size, other.m_size);
-    std::swap(m_capacity, other.m_capacity);
-}
-
-template<typename Key, typename Value>
-Pair<bool, size_t> HashMap<Key, Value>::find_bucket(const Key& key) const
-{
-    size_t start = hash(key);
-    size_t idx = start;
-    size_t first_deleted = invalid_index;
-
-    do
-    {
-        if (m_states[idx] == BucketState::Empty)
-        {
-            if (first_deleted != invalid_index)
-                idx = first_deleted;
-            return { false, idx };
-        }
-        else if (m_states[idx] == BucketState::Deleted)
-        {
-            if (first_deleted == invalid_index)
-                first_deleted = idx;
-        }
-        else if (m_states[idx] == BucketState::Occupied)
-        {
-            if (m_pairs[idx].first == key)
-                return { true, idx };
-        }
-
-        idx = (idx + 1) % m_capacity;
-
-    } while (idx != start);
-
-    if (first_deleted != invalid_index) return { false, first_deleted };
-
-    return { false, invalid_index };
-}
-
-template<typename Key, typename Value>
-void HashMap<Key, Value>::resize()
-{
-    reserve(m_capacity * 2);
-}
-
-template<typename Key, typename Value>
-size_t HashMap<Key, Value>::hash(const Key& key) const
-{
-    size_t hash_key = HashKey<Key>{}(key);
-
-    return hash_key & (m_capacity - 1);
-}
-
-template <typename Key, typename Value>
-void HashMap<Key, Value>::reset_states(Uint8 *states, size_t capacity)
-{
-    memset(states, 0, capacity);
-}
-
-}
-
-#endif
+#endif // YIALITE_HASHMAP_H

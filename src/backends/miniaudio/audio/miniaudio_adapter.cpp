@@ -137,7 +137,7 @@ SoundID MiniaudioAdapter::load_sound(const char* path)
 
 void MiniaudioAdapter::unload_sound(SoundID id)
 {
-    m_sound_paths.remove(id);
+    m_sound_paths.erase(id);
 }
 
 void MiniaudioAdapter::unload_all_sounds()
@@ -147,12 +147,12 @@ void MiniaudioAdapter::unload_all_sounds()
 
 bool MiniaudioAdapter::is_sound_loaded(SoundID id) const
 {
-    return m_sound_paths.contains_key(id);
+    return m_sound_paths.contains(id);
 }
 
 VoiceID MiniaudioAdapter::play(SoundID id, const PlayParams& params)
 {
-    String* path = m_sound_paths.find(id);
+    String* path = m_sound_paths.find_value(id);
     if (!path) return INVALID_VOICE_ID;
 
     ma_sound_group* group = find_bus(params.bus);
@@ -348,7 +348,7 @@ void MiniaudioAdapter::create_bus(const char* name)
 {
     if (!name) return;
     String key(name);
-    if (m_buses.find(key)) return;
+    if (m_buses.find(key) == m_buses.end()) return;
 
     ma_sound_group* group = alloc_obj<ma_sound_group>();
     ma_result result = ma_sound_group_init(&m_engine, 0, nullptr, group);
@@ -383,12 +383,12 @@ void MiniaudioAdapter::remove_bus(const char* name)
 {
     if (!name) return;
     String key(name);
-    ma_sound_group** group = m_buses.find(key);
-    if (!group) return;
+    auto it = m_buses.find(key);
+    if (it == m_buses.end()) return;
     
-    ma_sound_group_uninit(*group);
-    dealloc_obj(*group);
-    m_buses.remove(key);
+    ma_sound_group_uninit(it->second);
+    dealloc_obj(it->second);
+    m_buses.erase(it);
 }
 
 void MiniaudioAdapter::set_listener(const ListenerState& state)
@@ -431,8 +431,7 @@ size_t MiniaudioAdapter::get_voice_count() const
 ma_sound_group* MiniaudioAdapter::find_bus(const char* name)
 {
     if (!name || std::strcmp(name, "master") == 0) return nullptr;
-    ma_sound_group** group = m_buses.find(String(name));
-    return group ? *group : nullptr;
+    return *m_buses.find_value(name);
 }
 
 MiniaudioAdapter::VoiceData* MiniaudioAdapter::find_voice(VoiceID id)

@@ -105,7 +105,7 @@ public:
 
     void publish(IEvent& event)
     {
-        WrappedHandleGroup* group = m_groups.find(event.get_event_type_id());
+        WrappedHandleGroup* group = m_groups.find_value(event.get_event_type_id());
         if(!group) return;
 
         for (size_t prio = 0; prio < EVENT_PRIORITY_COUNT; ++prio)
@@ -141,7 +141,7 @@ public:
 private:
     void mark_dead(const Subscription& sp)
     {
-        WrappedHandleGroup* group = m_groups.find(sp.event_type_id);
+        WrappedHandleGroup* group = m_groups.find_value(sp.event_type_id);
         if(!group) return;
 
         auto& handle_list = group->handles[sp.prio_id.id];
