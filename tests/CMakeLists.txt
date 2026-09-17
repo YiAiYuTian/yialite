@@ -4,4 +4,7 @@ yia_add_test(core_smoke yialite_tests)
 yia_add_executable(yialite_list_tests yialite::core src/list_tests.cpp)
 yia_add_test(list yialite_list_tests)
 
+yia_add_executable(yialite_yia_hashmap_tests yialite::core src/hashmap_tests.cpp)
+yia_add_test(yia_hashmap yialite_yia_hashmap_tests)
+
 yia_add_executable(yialite_bench yialite::core src/bench.cpp)

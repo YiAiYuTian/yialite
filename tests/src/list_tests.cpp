@@ -767,11 +767,71 @@ void test_comparison()
 
 } // namespace
 
+// The range constructor now has two overloads: a forward range is measured
+// and copied in one go, an input range is walked element by element. Same
+// shape as assign(), and the two must agree on the result.
+void test_range_constructor()
+{
+    yia_test::section("range constructor: forward vs input");
+
+    const std::vector<int> v{1, 2, 3, 4, 5};
+
+    const List<int> via_forward(v.begin(), v.end());
+    check(same(via_forward, v), "forward range constructor");
+
+    const yia_test::InputOnlyIt<int> ifirst{v.data()};
+    const yia_test::InputOnlyIt<int> ilast{v.data() + v.size()};
+    const List<int> via_input(ifirst, ilast);
+    check(same(via_input, v), "input range constructor");
+    check(via_input == via_forward, "both overloads agree");
+
+    const List<int> empty_fwd(v.begin(), v.begin());
+    check(empty_fwd.empty() && empty_fwd.capacity() == 0,
+          "an empty forward range allocates nothing");
+    const List<int> empty_in(ifirst, ifirst);
+    check(empty_in.empty() && empty_in.capacity() == 0,
+          "an empty input range allocates nothing");
+
+    // the forward path sizes the buffer once instead of growing into it
+    std::vector<int> big;
+    big.reserve(1000);
+    for (int i = 0; i < 1000; ++i) big.push_back(i * 2);
+
+    const List<int> sized(big.begin(), big.end());
+    check(sized.size() == 1000, "1000 elements from a forward range");
+    check(sized.capacity() == 1000, "the buffer was sized exactly once");
+    check(sized.front() == 0 && sized.back() == 1998, "the ends are right");
+
+    bool every = true;
+    for (std::size_t i = 0; i < big.size(); ++i)
+        if (sized[i] != big[i]) every = false;
+    check(every, "every element matches the source");
+
+    // the non-trivial path has to go through real copy construction
+    const std::vector<yialite::String> names{yialite::String("alpha"),
+                                             yialite::String("beta"),
+                                             yialite::String("gamma")};
+
+    const List<yialite::String> str_forward(names.begin(), names.end());
+    check(str_forward.size() == 3, "forward range of String");
+    check(str_forward[1] == yialite::String("beta"), "and the contents landed");
+
+    const yia_test::InputOnlyIt<yialite::String> sfirst{names.data()};
+    const yia_test::InputOnlyIt<yialite::String> slast{names.data() + names.size()};
+    const List<yialite::String> str_input(sfirst, slast);
+    check(str_input == str_forward, "both String paths agree");
+
+    // a List used as the source for another List
+    const List<int> from_list(via_forward.begin(), via_forward.end());
+    check(from_list == via_forward, "constructing from another List's range");
+}
+
 int main()
 {
     std::printf("yialite::List correctness\n");
 
     test_construct();
+    test_range_constructor();
     test_assignment();
     test_capacity();
     test_access_and_iteration();

@@ -131,9 +131,9 @@ public:
 
     HashMap() noexcept = default;
 
-    explicit HashMap(size_type bucket_count) noexcept
+    explicit HashMap(size_type count) noexcept
     {
-        const size_type cap = bucket_need(bucket_count);
+        const size_type cap = bucket_need(count);
         if (cap == 0 || !try_rehash(cap)) detail::out_of_memory();
     }
 
@@ -193,29 +193,29 @@ public:
 
         for (auto &[k, v] : *this)
         {
-            const Value *v_other = other.find_value(k);
+            const mapped_type *v_other = other.find_value(k);
             if (!v_other || *v_other != v) return false;
         }
 
         return true;
     }
 
-    mapped_type &operator[](const Key &key) noexcept
+    mapped_type &operator[](const key_type &key) noexcept
     {
         const SlotRef ref = prepare_slot(key);
         if (ref.found) return m_slots[ref.index].second;
 
-        std::construct_at(m_slots + ref.index, key, Value{});
+        std::construct_at(m_slots + ref.index, key, mapped_type{});
         occupy(ref.index);
         return m_slots[ref.index].second;
     }
 
-    mapped_type &operator[](Key &&key) noexcept
+    mapped_type &operator[](key_type &&key) noexcept
     {
         const SlotRef ref = prepare_slot(key);
         if (ref.found) return m_slots[ref.index].second;
 
-        std::construct_at(m_slots + ref.index, std::move(key), Value{});
+        std::construct_at(m_slots + ref.index, std::move(key), mapped_type{});
         occupy(ref.index);
         return m_slots[ref.index].second;
     }
@@ -241,7 +241,7 @@ public:
     }
 
     [[nodiscard]] size_type size() const noexcept { return m_size; }
-    [[nodiscard]] constexpr static size_type max_size() noexcept
+    [[nodiscard]] static constexpr size_type max_size() noexcept
     {
         const size_type cap = max_capacity();
         return cap - cap / LOAD_DEN;
@@ -285,7 +285,7 @@ public:
     }
 
     template <typename... Args>
-    Pair<iterator, bool> try_emplace(const Key &key, Args &&...args) noexcept
+    Pair<iterator, bool> try_emplace(const key_type &key, Args &&...args) noexcept
     {
         const SlotRef ref = prepare_slot(key);
         if (ref.found) return { make_iterator(ref.index), false };
@@ -296,7 +296,7 @@ public:
     }
 
     template <typename... Args>
-    Pair<iterator, bool> try_emplace(Key &&key, Args &&...args) noexcept
+    Pair<iterator, bool> try_emplace(key_type &&key, Args &&...args) noexcept
     {
         const SlotRef ref = prepare_slot(key);
         if (ref.found) return { make_iterator(ref.index), false };
@@ -319,7 +319,21 @@ public:
         return { make_iterator(ref.index), true };
     }
 
-    Pair<iterator, bool> insert_or_assign(const Key &key, Value &&value) noexcept
+    Pair<iterator, bool> insert_or_assign(const key_type &key, const mapped_type &value) noexcept
+    {
+        const SlotRef ref = prepare_slot(key);
+        if (ref.found)
+        {
+            m_slots[ref.index].second = value;
+            return { make_iterator(ref.index), false };
+        }
+
+        std::construct_at(m_slots + ref.index, key, value);
+        occupy(ref.index);
+        return { make_iterator(ref.index), true };
+    }
+
+    Pair<iterator, bool> insert_or_assign(const key_type &key, mapped_type &&value) noexcept
     {
         const SlotRef ref = prepare_slot(key);
         if (ref.found)
@@ -333,7 +347,21 @@ public:
         return { make_iterator(ref.index), true };
     }
 
-    Pair<iterator, bool> insert(const Key &key, const Value &value) noexcept
+    Pair<iterator, bool> insert_or_assign(key_type &&key, mapped_type &&value) noexcept
+    {
+        const SlotRef ref = prepare_slot(key);
+        if (ref.found)
+        {
+            m_slots[ref.index].second = std::move(value);
+            return { make_iterator(ref.index), false };
+        }
+
+        std::construct_at(m_slots + ref.index, std::move(key), std::move(value));
+        occupy(ref.index);
+        return { make_iterator(ref.index), true };
+    }
+
+    Pair<iterator, bool> insert(const key_type &key, const mapped_type &value) noexcept
     {
         const SlotRef ref = prepare_slot(key);
         if (ref.found) return { make_iterator(ref.index), false };
@@ -343,7 +371,7 @@ public:
         return { make_iterator(ref.index), true };
     }
 
-    Pair<iterator, bool> insert(const Key &key, Value &&value) noexcept
+    Pair<iterator, bool> insert(const key_type &key, mapped_type &&value) noexcept
     {
         const SlotRef ref = prepare_slot(key);
         if (ref.found) return { make_iterator(ref.index), false };
@@ -353,7 +381,7 @@ public:
         return { make_iterator(ref.index), true };
     }
 
-    Pair<iterator, bool> insert(Key &&key, Value &&value) noexcept
+    Pair<iterator, bool> insert(key_type &&key, mapped_type &&value) noexcept
     {
         const SlotRef ref = prepare_slot(key);
         if (ref.found) return { make_iterator(ref.index), false };
@@ -390,36 +418,36 @@ public:
             insert(first->first, first->second);
     }
 
-    [[nodiscard]] iterator find(const Key &key) noexcept
+    [[nodiscard]] iterator find(const key_type &key) noexcept
     {
         const SlotRef ref = find_slot(key);
         return ref.found ? make_iterator(ref.index) : end();
     }
 
-    [[nodiscard]] const_iterator find(const Key &key) const noexcept
+    [[nodiscard]] const_iterator find(const key_type &key) const noexcept
     {
         const SlotRef ref = find_slot(key);
         return ref.found ? make_const_iterator(ref.index) : end();
     }
 
-    [[nodiscard]] mapped_type *find_value(const Key &key) noexcept
+    [[nodiscard]] mapped_type *find_value(const key_type &key) noexcept
     {
         const SlotRef ref = find_slot(key);
         return ref.found ? &m_slots[ref.index].second : nullptr;
     }
 
-    [[nodiscard]] const mapped_type *find_value(const Key &key) const noexcept
+    [[nodiscard]] const mapped_type *find_value(const key_type &key) const noexcept
     {
         const SlotRef ref = find_slot(key);
         return ref.found ? &m_slots[ref.index].second : nullptr;
     }
 
-    [[nodiscard]] bool contains(const Key &key) const noexcept
+    [[nodiscard]] bool contains(const key_type &key) const noexcept
     {
         return find_slot(key).found;
     }
 
-    size_type erase(const Key &key) noexcept
+    size_type erase(const key_type &key) noexcept
     {
         const SlotRef ref = find_slot(key);
         if (!ref.found) return 0;
@@ -502,12 +530,12 @@ private:
         return n != 0 && (n & (n - 1)) == 0;
     }
 
-    [[nodiscard]] SlotRef find_slot(const Key &key) const noexcept
+    [[nodiscard]] SlotRef find_slot(const key_type &key) const noexcept
     {
         if (m_capacity == 0) return { 0, false };
 
         const size_type mask  = m_capacity - 1;
-        const size_type start = HashKey<Key>{}(key) & mask;
+        const size_type start = HashKey<key_type>{}(key) & mask;
 
         size_type idx        = start;
         size_type first_tomb = NPOS;
@@ -533,7 +561,7 @@ private:
         }
     }
 
-    [[nodiscard]] SlotRef prepare_slot(const Key &key) noexcept
+    [[nodiscard]] SlotRef prepare_slot(const key_type &key) noexcept
     {
         reserve(m_size + 1);
         
@@ -577,7 +605,7 @@ private:
         {
             if (m_states[i] != SlotState::Occupied) continue;
 
-            size_type idx = HashKey<Key>{}(m_slots[i].first) & mask;
+            size_type idx = HashKey<key_type>{}(m_slots[i].first) & mask;
             while (fresh_states[idx] == SlotState::Occupied)
                 idx = (idx + 1) & mask;
 

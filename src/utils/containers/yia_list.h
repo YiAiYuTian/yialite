@@ -232,7 +232,7 @@ public:
             emplace_back(*first);
     }
 
-    bool try_reserve(size_type cap) noexcept
+    [[nodiscard]] bool try_reserve(size_type cap) noexcept
     {
         if (cap <= m_capacity) return true;
         if (cap > max_size()) return false;
