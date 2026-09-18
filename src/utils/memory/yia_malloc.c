@@ -62,20 +62,51 @@ static DWORD g_fls_index = FLS_OUT_OF_INDEXES;
 
 static void CALLBACK yia_fls_dtor(PVOID data)
 {
-    if (data == NULL) return;
     yia_lifecycle_unregister();
     int idx = *(int *)data;
     if (idx == YIA_SLOT_INVALID_INDEX) return;
 
     YiaSlot *slot = &g_slot_table[idx];
-    yia_pool_drain();
-    if (g_pool->outstanding == 0) yia_slot_return(idx);
+    YiaPool *pool = &g_pool_table[idx];
+
+    // pool_drain
+    size_t n = 0;
+    YiaFreeNode *chain = (YiaFreeNode *)yia_atomic_exchange_ptr((void *volatile *)&slot->retqueue, NULL);
+    while (chain != NULL)
+    {
+        YiaFreeNode *next = chain->next;
+        ++n;
+        chain = next;
+    }
+    pool->outstanding -= n;
+
+    // large_flush
+    for (size_t i = 0; i < YIA_LARGE_BUCKET_COUNT; ++i)
+    {
+        YiaFreeNode *node = pool->large_cache.buckets[i];
+        while (node != NULL)
+        {
+            YiaFreeNode *next = node->next;
+            yia_os_free(node, (YIA_MEDIUM_CUTOFF << (i + 1)));
+            node = next;
+        }
+        pool->large_cache.buckets[i] = NULL;
+        pool->large_cache.count[i] = 0;
+    }
+    pool->large_cache.total_bytes = 0;
+
+    if (pool->outstanding == 0)
+    {
+        pool->inited = false;
+        pool->slot_index = YIA_SLOT_INVALID_INDEX;
+        pool->slot_used = 0;
+        yia_slot_return(idx);
+    }
     else
     {
-        yia_atomic_store_s32(&slot->outstanding, (int32_t)g_pool->outstanding);
+        yia_atomic_store_s32(&slot->outstanding, (int32_t)pool->outstanding);
         yia_atomic_store_s32(&slot->orphaned, 1);
     }
-    yia_large_flush();
 }
 
 static bool yia_lifecycle_register(void)
@@ -175,20 +206,18 @@ static bool yia_reclaim_orphan(void)
     {
         YiaSlot *s = &g_slot_table[i];
         if (yia_atomic_load_s32(&s->orphaned) == 0) continue;
+        if (yia_atomic_cas_s32(&s->orphaned, 1, 0) != 1) continue;
 
         YiaFreeNode *chain = (YiaFreeNode *)yia_atomic_exchange_ptr((void *volatile *)&s->retqueue, NULL);
         int32_t n = 0;
-        for (YiaFreeNode *c = chain; c != NULL; c = c->next)
-        {
-            ++n;
-        }
+        for (YiaFreeNode *c = chain; c != NULL; c = c->next) ++n;
         
         if (yia_atomic_load_s32(&s->outstanding) <= (int32_t)n)
         {
             YiaPool *pool = &g_pool_table[i];
             pool->inited = false;
             pool->outstanding = 0;
-            pool->slot_index = 0;
+            pool->slot_index = YIA_SLOT_INVALID_INDEX;
             pool->slot_used = 0;
 
             yia_slot_return(i);
@@ -196,6 +225,7 @@ static bool yia_reclaim_orphan(void)
         }
 
         yia_atomic_dec_s32(&s->outstanding, n);
+        yia_atomic_store_s32(&s->orphaned, 1);
     }
     return false;
 }

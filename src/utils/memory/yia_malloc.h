@@ -147,6 +147,11 @@ static inline uint32_t yia_atomic_cas_u32(volatile uint32_t *p, uint32_t old_v, 
     return (uint32_t)InterlockedCompareExchange((volatile LONG *)p, (LONG)new_v, (LONG)old_v);
 }
 
+static inline int32_t yia_atomic_cas_s32(volatile int32_t *p, int32_t old_v, int32_t new_v)
+{
+    return (int32_t)InterlockedCompareExchange((volatile LONG *)p, (LONG)new_v, (LONG)old_v);
+}
+
 static inline int32_t yia_atomic_inc_s32(volatile int32_t *p, int32_t v)
 {
     return (int32_t)InterlockedExchangeAdd((volatile LONG *)p, (LONG)v) + v;
@@ -183,6 +188,12 @@ static inline void *yia_atomic_exchange_ptr(void *volatile *p, void *new_v)
 }
 #else
 static inline uint32_t yia_atomic_cas_u32(volatile uint32_t *p, uint32_t old_v, uint32_t new_v)
+{
+    __atomic_compare_exchange_n(p, &old_v, new_v, false, __ATOMIC_ACQ_REL, __ATOMIC_ACQUIRE);
+    return old_v;
+}
+
+static inline int32_t yia_atomic_cas_s32(volatile int32_t *p, int32_t old_v, int32_t new_v)
 {
     __atomic_compare_exchange_n(p, &old_v, new_v, false, __ATOMIC_ACQ_REL, __ATOMIC_ACQUIRE);
     return old_v;
@@ -426,29 +437,12 @@ static inline void yia_free(void *p)
     int page_idx = (int32_t)(uint32_t)route;
     int slot_idx = (int32_t)(uint32_t)(route >> 32);
 
+    if (page_idx != YIA_PAGE_INVALID_INDEX && slot_idx == YIA_SLOT_INVALID_INDEX)
+    {
+        free(block);
+        return;
+    }
     yia_free_sized(block, size);
-
-    /* if (page_idx == YIA_PAGE_INVALID_INDEX) */
-    /* { */
-    /*     if (size <= YIA_LARGE_CUTOFF) yia_large_free(block, size); */
-    /*     else yia_os_free(block, size); // !small pool && !medium pool -> use yia_os_free */
-    /*     return; */
-    /* } */
-    /* else if (slot_idx == YIA_SLOT_INVALID_INDEX) */
-    /* { */
-    /*     free(block); */
-    /*     return; */
-    /* } */
-
-    /* YiaPage *page = &g_pool->pages[page_idx]; */
-    /* if (slot_idx == g_pool->slot_index) */
-    /* { */
-    /*     YiaFreeNode *node = (YiaFreeNode *)block; */
-    /*     node->next = page->free_list; */
-    /*     page->free_list = node; */
-    /*     --g_pool->outstanding; */
-    /* } */
-    /* else yia_retq_push(&g_slot_table[slot_idx], (YiaFreeNode *)block, size); */
 }
 
 static inline void *yia_calloc(size_t n, size_t size)
