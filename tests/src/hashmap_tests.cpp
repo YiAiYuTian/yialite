@@ -23,7 +23,9 @@
 #include "test_util.h"
 
 #include "utils/containers/yia_hashmap.h"
+#include "utils/containers/yia_list.h"
 #include "utils/handle.h"
+#include "utils/memory/yia_malloc.h"
 #include "utils/string/yia_string.h"
 
 #include <algorithm>
@@ -31,7 +33,9 @@
 #include <cstdio>
 #include <initializer_list>
 #include <iterator>
+#include <memory>
 #include <random>
+#include <thread>
 #include <type_traits>
 #include <unordered_map>
 #include <utility>
@@ -43,6 +47,7 @@ using yia_test::section;
 
 using yialite::HashMap;
 using yialite::Handle;
+using yialite::List;
 using yialite::Pair;
 using yialite::String;
 using yialite::Uint64;
@@ -469,9 +474,11 @@ void test_growth_and_capacity()
     check_same(m, ref, "and clear() emptied it");
 
     // An impossible request must be refused, not abort.
-    HashMap<int, int> small;
-    check(!small.try_reserve(HashMap<int, int>::max_size() + 1), "an impossible try_reserve returns false");
-    check(small.capacity() == 0 && small.empty(), "and leaves the map untouched");
+    // NOTE: not called `small` - yia_malloc.h pulls in <windows.h>, and MSVC's
+    // rpcndr.h still defines `small` as a macro.
+    HashMap<int, int> tiny_map;
+    check(!tiny_map.try_reserve(HashMap<int, int>::max_size() + 1), "an impossible try_reserve returns false");
+    check(tiny_map.capacity() == 0 && tiny_map.empty(), "and leaves the map untouched");
 
     // The bucket-count constructor. NOTE: it currently treats the argument as an
     // ELEMENT count (bucket_need), not as a bucket count - HashMap(8) gets 16
@@ -1022,12 +1029,60 @@ void test_against_std_random()
     check(m.capacity() > 0, "clear kept the table");
 }
 
+// ------------------------------------------------------- across threads
+
+// Neither HashMap nor List is thread safe, and nothing below is touched by two
+// threads at once. What crosses the thread boundary is the MEMORY: a container
+// filled here is destroyed on a worker, so its slot arrays - and every List
+// allocation - are freed by a thread that never allocated them. yia_malloc sends
+// such a free to the owning slot's return queue (yia_retq_push) instead of
+// touching that thread's free lists, and the owner collects it in
+// yia_pool_drain(). Both containers here go through the unsized alloc_raw()/
+// dealloc_raw() path, so this also covers the 16-byte-header flavour of that
+// queue, which the std_containers test does not.
+void test_across_threads()
+{
+    section("built on this thread, destroyed on another");
+
+    yia_pool_drain();
+    const std::size_t baseline = g_pool.outstanding;
+    check(baseline == 0, "this thread starts with nothing outstanding");
+
+    {
+        auto map = std::make_unique<HashMap<int, Tracked>>();
+        for (int i = 0; i < 300; ++i) map->try_emplace(i, i);
+
+        auto list = std::make_unique<List<int>>();
+        for (int i = 0; i < 300; ++i) list->push_back(i);
+
+        check(Tracked::live == 300, "300 tracked values are alive");
+        const std::size_t charged = g_pool.outstanding;
+        check(charged > baseline, "the containers' blocks are charged to this thread");
+
+        std::thread worker([&] {
+            map.reset();
+            list.reset();
+        });
+        worker.join();
+
+        check(Tracked::live == 0, "the worker's destructor destroyed every element");
+        check(map == nullptr && list == nullptr, "and it really did destroy them");
+        check(g_pool.outstanding == charged, "nothing was charged to this thread");
+
+        yia_pool_drain();
+        check(g_pool.outstanding == baseline, "yia_pool_drain() collects the blocks back");
+    }
+
+    HashMap<int, int> again;
+    for (int i = 0; i < 100; ++i) again.insert(i, i);
+    check(again.size() == 100, "the pools still hand out memory afterwards");
+}
+
 } // namespace
 
 int main()
 {
-    test_empty();
-    test_insert();
+    test_empty();    test_insert();
     test_insert_or_assign_and_emplace();
     test_lookup();
     test_erase();
@@ -1040,6 +1095,7 @@ int main()
     test_ranges();
     test_against_std_scripted();
     test_against_std_random();
+    test_across_threads();
 
     return report();
 }

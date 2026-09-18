@@ -21,23 +21,28 @@ namespace detail
     }
 }
 
+inline constexpr size_t ALLOC_ALIGNMENT = 16;
+
 // raw (16byte aligned)
 [[nodiscard]] void *alloc_raw(size_t size) noexcept;
 [[nodiscard]] void *calloc_raw(size_t n, size_t size) noexcept;
 [[nodiscard]] void *realloc_raw(void *p, size_t size) noexcept;
-
 [[nodiscard]] void *try_alloc_raw(size_t size) noexcept;
 [[nodiscard]] void *try_calloc_raw(size_t n, size_t size) noexcept;
 [[nodiscard]] void *try_realloc_raw(void *p, size_t size) noexcept;
 void dealloc_raw(void *p) noexcept;
 
+[[nodiscard]] void *alloc_raw_sized(size_t size) noexcept;
+[[nodiscard]] void *try_alloc_raw_sized(size_t size) noexcept;
+void dealloc_raw_sized(void *p, size_t size) noexcept;
+
 // object
 template<typename T, typename ...Args>
 [[nodiscard]] T *alloc_obj(Args&& ...args) noexcept
 {
-    static_assert(alignof(T) <= 16, "T requires alignment >16, yia_malloc only 16byte aligned");
+    static_assert(alignof(T) <= ALLOC_ALIGNMENT, "T requires alignment >16, yia_malloc only 16byte aligned");
     static_assert(noexcept(T(std::declval<Args>()...)), "alloc_obj<T>: T's construction (and destruction) must be noexcept.");
-    
+
     void *raw = alloc_raw(sizeof(T));
     if (!raw) return nullptr;
 
@@ -56,7 +61,7 @@ void dealloc_obj(T *p) noexcept
 template<typename T>
 [[nodiscard]] T *alloc_arr(size_t count) noexcept
 {
-    static_assert(alignof(T) <= 16, "T requires alignment >16, yia_malloc only 16byte aligned");
+    static_assert(alignof(T) <= ALLOC_ALIGNMENT, "T requires alignment >16, yia_malloc only 16byte aligned");
 
     T *raw = static_cast<T *>(alloc_raw(sizeof(T) * count));
     if (!raw) return nullptr;
@@ -70,7 +75,8 @@ void dealloc_arr(T *p, size_t count) noexcept
 {
     if (!p) return;
 
-    for (size_t i = count; i > 0; --i) p[i-1].~T();
+    for (size_t i = count; i > 0; --i)
+        p[i-1].~T();
     dealloc_raw(p);
 }
 

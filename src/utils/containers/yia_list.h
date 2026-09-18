@@ -36,7 +36,7 @@ template <typename T>
 class List
 {
     static_assert(std::is_object_v<T> && !std::is_const_v<T>, "List<T>: T must be a non-const object type");
-    static_assert(alignof(T) <= 16, "List<T>: T requires alignment >16, yia_malloc only 16-byte aligned");
+    static_assert(alignof(T) <= ALLOC_ALIGNMENT, "List<T>: T requires alignment >16, yia_malloc only 16-byte aligned");
     static_assert(std::is_nothrow_move_constructible_v<T>, "List<T>: T must be nothrow move constructible");
     static_assert(std::is_nothrow_destructible_v<T>, "List<T>: T must be nothrow destructible");
     static_assert(std::is_nothrow_copy_constructible_v<T>, "List<T>: T must be nothrow copy constructible");

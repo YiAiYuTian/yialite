@@ -362,12 +362,13 @@ static inline void *yia_malloc_sized_impl(size_t *size, int *page_idx, int *slot
 
 static inline void *yia_malloc_sized(size_t size)
 {
+    if (size == 0) return NULL;
     return yia_malloc_sized_impl(&size, NULL, NULL);
 }
 
 static inline void yia_free_sized(void *p, size_t size)
 {
-    if (p == NULL) return;
+    if (p == NULL || size == 0) return;
 
     YiaPage *page = yia_page_of_size(size, NULL);
     if (page == NULL)

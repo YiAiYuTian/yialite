@@ -22,7 +22,7 @@ class HashMap
 {
     static_assert(std::is_object_v<Key> && !std::is_const_v<Key>, "HashMap<K, V>: K must be a non-const object type");
     static_assert(std::is_object_v<Value> && !std::is_const_v<Value>, "HashMap<K, V>: V must be a non-const object type");
-    static_assert(alignof(Pair<Key, Value>) <= 16, "HashMap<K, V>: slots need alignment >16, yia_malloc is only 16-byte aligned");
+    static_assert(alignof(Pair<Key, Value>) <= ALLOC_ALIGNMENT, "HashMap<K, V>: slots need alignment >16, yia_malloc is only 16-byte aligned");
     static_assert(std::is_nothrow_move_constructible_v<Pair<Key, Value>>, "HashMap<K, V>: K and V must be nothrow move constructible");
     static_assert(std::is_nothrow_destructible_v<Pair<Key, Value>>, "HashMap<K, V>: K and V must be nothrow destructible");
     static_assert(std::is_nothrow_copy_constructible_v<Pair<Key, Value>>, "HashMap<K, V>: K and V must be nothrow copy constructible");

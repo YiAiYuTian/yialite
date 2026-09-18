@@ -46,4 +46,21 @@ void dealloc_raw(void *p) noexcept
     yia_free(p);
 }
 
+void *alloc_raw_sized(size_t size) noexcept
+{
+    void *raw = yia_malloc_sized(size);
+    if (!raw && size != 0) detail::out_of_memory();
+    return raw;
+}
+
+void *try_alloc_raw_sized(size_t size) noexcept
+{
+    return yia_malloc_sized(size);
+}
+
+void dealloc_raw_sized(void *p, size_t size) noexcept
+{
+    yia_free_sized(p, size);
+}
+
 }    
