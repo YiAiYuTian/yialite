@@ -417,7 +417,7 @@ void test_across_threads()
     section("built on this thread, destroyed on another");
 
     yia_pool_drain();
-    const std::size_t baseline = g_pool.outstanding;
+    const std::size_t baseline = g_pool->outstanding;
     check(baseline == 0, "this thread starts with nothing outstanding");
 
     Ledger::reset();
@@ -439,7 +439,7 @@ void test_across_threads()
 
         std::shared_ptr<int> shared = std::allocate_shared<int>(Allocator<int>{}, 7);
 
-        const std::size_t charged = g_pool.outstanding;
+        const std::size_t charged = g_pool->outstanding;
         check(charged > baseline, "every block above is charged to this thread");
 
         std::thread worker([&] {
@@ -452,11 +452,11 @@ void test_across_threads()
         });
         worker.join();
 
-        check(g_pool.outstanding == charged, "destroying them on a worker charges nothing here");
+        check(g_pool->outstanding == charged, "destroying them on a worker charges nothing here");
         check(shared == nullptr && vector_holder == nullptr, "the worker really did destroy them");
 
         yia_pool_drain();
-        check(g_pool.outstanding == baseline, "yia_pool_drain() collects every block back");
+        check(g_pool->outstanding == baseline, "yia_pool_drain() collects every block back");
     }
     check_ledger("destroyed on another thread: sizes, counts and the ledger all still agree");
 

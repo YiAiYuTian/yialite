@@ -111,7 +111,7 @@ typedef struct YiaPool
 // global var in yia_malloc.c
 extern void *volatile g_arena;
 extern YiaSlot g_slot_table[YIA_SLOT_COUNT];
-extern YIA_TLS YiaPool g_pool;
+extern YIA_TLS YiaPool *g_pool;
 
 // tools
 static inline int yia_ctz_u32(uint32_t v)
@@ -303,7 +303,7 @@ static inline YiaPage *yia_page_of_size(size_t size, int *idx)
     if (page_idx < YIA_SMALL_PAGE_COUNT)
     {
         if (idx != NULL) *idx = page_idx;
-        return &g_pool.pages[page_idx];
+        return &g_pool->pages[page_idx];
     }
 
     if (size > YIA_MEDIUM_CUTOFF)
@@ -316,12 +316,12 @@ static inline YiaPage *yia_page_of_size(size_t size, int *idx)
     page_idx = yia_ctz_u32((uint32_t)size_pow2) - 9 + YIA_SMALL_PAGE_COUNT;
 
     if (idx != NULL) *idx = page_idx;
-    return &g_pool.pages[page_idx];
+    return &g_pool->pages[page_idx];
 }
 
 static inline void *yia_malloc_sized_impl(size_t *size, int *page_idx, int *slot_idx)
 {
-    if (YIA_UNLIKELY(!g_pool.inited) && YIA_UNLIKELY(!yia_pool_init())) return NULL;
+    if (YIA_UNLIKELY(g_pool == NULL || !g_pool->inited) && YIA_UNLIKELY(!yia_pool_init())) return NULL;
 
     int idx   = YIA_PAGE_INVALID_INDEX;
     if(page_idx != NULL) *page_idx = YIA_PAGE_INVALID_INDEX;
@@ -354,9 +354,9 @@ static inline void *yia_malloc_sized_impl(size_t *size, int *page_idx, int *slot
     }
     else p->free_list = node->next;
 
-    if (slot_idx != NULL) *slot_idx = g_pool.slot_index;
+    if (slot_idx != NULL) *slot_idx = g_pool->slot_index;
 
-    ++g_pool.outstanding;
+    ++g_pool->outstanding;
     return (void *)node;
 }
 
@@ -370,28 +370,35 @@ static inline void yia_free_sized(void *p, size_t size)
 {
     if (p == NULL || size == 0) return;
 
-    YiaPage *page = yia_page_of_size(size, NULL);
-    if (page == NULL)
+    if (size > YIA_MEDIUM_CUTOFF)
     {
         size_t round_up_size = yia_round_up_pow2(size);
-        if (round_up_size <= YIA_LARGE_CUTOFF) yia_large_free(p, round_up_size);
-        else yia_os_free(p, round_up_size); // !small pool && !medium pool -> use yia_os_free
+        if (g_pool != NULL && g_pool->inited && round_up_size <= YIA_LARGE_CUTOFF)
+        {
+            yia_large_free(p, round_up_size);
+            return;
+        }
+        yia_os_free(p, round_up_size);
         return;
     }
 
     int idx = yia_slot_of(p);
-    if (idx == g_pool.slot_index)
+    if (g_pool != NULL && g_pool->inited && idx == g_pool->slot_index)
     {
+        YiaPage *page = yia_page_of_size(size, NULL);
         YiaFreeNode *node = (YiaFreeNode *)p;
         node->next = page->free_list;
         page->free_list = node;
-        --g_pool.outstanding;
+        --g_pool->outstanding;
+        return;
     }
-    else if (idx >= 0)
+
+    if (idx >= 0)
     {
         yia_retq_push(&g_slot_table[idx], (YiaFreeNode *)p, size);
+        return;
     }
-    else free(p); // !slot -> use free
+    free(p);
 }
 
 static inline void *yia_malloc(size_t size)
@@ -401,7 +408,7 @@ static inline void *yia_malloc(size_t size)
     size_t total = size + YIA_HEADER_SIZE;
     int page_idx = YIA_PAGE_INVALID_INDEX;
     int slot_idx = YIA_SLOT_INVALID_INDEX;
-    void *block = yia_malloc_sized_impl(&total, &page_idx, &slot_idx);  // use malloc -> page_idx, slot_idx = INVALID_INDEX
+    void *block = yia_malloc_sized_impl(&total, &page_idx, &slot_idx);  // use malloc -> slot_idx = INVALID_INDEX
     if (block == NULL) return NULL;
 
     *(size_t *)block = total;
@@ -419,27 +426,29 @@ static inline void yia_free(void *p)
     int page_idx = (int32_t)(uint32_t)route;
     int slot_idx = (int32_t)(uint32_t)(route >> 32);
 
-    if (page_idx == YIA_PAGE_INVALID_INDEX)
-    {
-        if (size <= YIA_LARGE_CUTOFF) yia_large_free(block, size);
-        else yia_os_free(block, size); // !small pool && !medium pool -> use yia_os_free
-        return;
-    }
-    else if (slot_idx == YIA_SLOT_INVALID_INDEX)
-    {
-        free(block);
-        return;
-    }
+    yia_free_sized(block, size);
 
-    YiaPage *page = &g_pool.pages[page_idx];
-    if (slot_idx == g_pool.slot_index)
-    {
-        YiaFreeNode *node = (YiaFreeNode *)block;
-        node->next = page->free_list;
-        page->free_list = node;
-        --g_pool.outstanding;
-    }
-    else yia_retq_push(&g_slot_table[slot_idx], (YiaFreeNode *)block, size);
+    /* if (page_idx == YIA_PAGE_INVALID_INDEX) */
+    /* { */
+    /*     if (size <= YIA_LARGE_CUTOFF) yia_large_free(block, size); */
+    /*     else yia_os_free(block, size); // !small pool && !medium pool -> use yia_os_free */
+    /*     return; */
+    /* } */
+    /* else if (slot_idx == YIA_SLOT_INVALID_INDEX) */
+    /* { */
+    /*     free(block); */
+    /*     return; */
+    /* } */
+
+    /* YiaPage *page = &g_pool->pages[page_idx]; */
+    /* if (slot_idx == g_pool->slot_index) */
+    /* { */
+    /*     YiaFreeNode *node = (YiaFreeNode *)block; */
+    /*     node->next = page->free_list; */
+    /*     page->free_list = node; */
+    /*     --g_pool->outstanding; */
+    /* } */
+    /* else yia_retq_push(&g_slot_table[slot_idx], (YiaFreeNode *)block, size); */
 }
 
 static inline void *yia_calloc(size_t n, size_t size)
@@ -475,8 +484,10 @@ static inline void *yia_realloc(void *p, size_t size)
         new_size = yia_round_up_pow2(size + YIA_HEADER_SIZE);
         if (new_size <= old_size) return p;
 
+        const bool cached = (g_pool != NULL && g_pool->inited);
+
         void *nb = NULL;
-        if (new_size <= YIA_LARGE_CUTOFF) nb = yia_large_try_alloc(new_size);
+        if (cached && new_size <= YIA_LARGE_CUTOFF) nb = yia_large_try_alloc(new_size);
         if (nb == NULL) nb = yia_os_malloc(new_size);
         if (nb == YIA_OS_MALLOC_ERROR) return NULL;
 
@@ -486,7 +497,7 @@ static inline void *yia_realloc(void *p, size_t size)
         void *np = (void *)((unsigned char *)nb + YIA_HEADER_SIZE);
         memcpy(np, p, old_size - YIA_HEADER_SIZE);
 
-        if (old_size <= YIA_LARGE_CUTOFF) yia_large_free(block, old_size);
+        if (cached && old_size <= YIA_LARGE_CUTOFF) yia_large_free(block, old_size);
         else yia_os_free(block, old_size);
 
         return np;

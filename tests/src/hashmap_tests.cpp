@@ -1045,7 +1045,7 @@ void test_across_threads()
     section("built on this thread, destroyed on another");
 
     yia_pool_drain();
-    const std::size_t baseline = g_pool.outstanding;
+    const std::size_t baseline = g_pool->outstanding;
     check(baseline == 0, "this thread starts with nothing outstanding");
 
     {
@@ -1056,7 +1056,7 @@ void test_across_threads()
         for (int i = 0; i < 300; ++i) list->push_back(i);
 
         check(Tracked::live == 300, "300 tracked values are alive");
-        const std::size_t charged = g_pool.outstanding;
+        const std::size_t charged = g_pool->outstanding;
         check(charged > baseline, "the containers' blocks are charged to this thread");
 
         std::thread worker([&] {
@@ -1067,10 +1067,10 @@ void test_across_threads()
 
         check(Tracked::live == 0, "the worker's destructor destroyed every element");
         check(map == nullptr && list == nullptr, "and it really did destroy them");
-        check(g_pool.outstanding == charged, "nothing was charged to this thread");
+        check(g_pool->outstanding == charged, "nothing was charged to this thread");
 
         yia_pool_drain();
-        check(g_pool.outstanding == baseline, "yia_pool_drain() collects the blocks back");
+        check(g_pool->outstanding == baseline, "yia_pool_drain() collects the blocks back");
     }
 
     HashMap<int, int> again;

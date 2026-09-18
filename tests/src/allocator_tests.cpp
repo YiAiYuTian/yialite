@@ -315,11 +315,11 @@ void test_cross_thread()
 {
     section("allocate on one thread, free on another");
 
-    // A thread's pool, and g_pool.outstanding with it, only exists after that
+    // A thread's pool, and g_pool->outstanding with it, only exists after that
     // thread has allocated something - and drain only means anything afterwards.
     dealloc_raw(alloc_raw(64));
     yia_pool_drain();
-    const std::size_t baseline = g_pool.outstanding;
+    const std::size_t baseline = g_pool->outstanding;
     check(baseline == 0, "this thread starts with nothing outstanding");
 
     // ---- this thread allocates, a worker frees
@@ -337,25 +337,25 @@ void test_cross_thread()
             blocks.push_back(try_alloc_raw_sized(size));
             sizes.push_back(size);
         }
-        check(g_pool.outstanding == baseline + count, "200 blocks are outstanding on this thread");
+        check(g_pool->outstanding == baseline + count, "200 blocks are outstanding on this thread");
 
         std::thread worker([&] {
             for (std::size_t i = 0; i < count; ++i) dealloc_raw_sized(blocks[i], sizes[i]);
         });
         worker.join();
 
-        check(g_pool.outstanding == baseline + count,
+        check(g_pool->outstanding == baseline + count,
               "the worker freed them, but they stay charged here until this thread drains");
         check(yia_slot_of(blocks[0]) != YIA_SLOT_INVALID_INDEX, "the memory itself is untouched");
 
         yia_pool_drain();
-        check(g_pool.outstanding == baseline, "yia_pool_drain() collects all 200 back");
+        check(g_pool->outstanding == baseline, "yia_pool_drain() collects all 200 back");
 
         void *again = try_alloc_raw_sized(sizes[0]);
-        check(in_arena(again) && g_pool.outstanding == baseline + 1, "a drained block is handed out again");
+        check(in_arena(again) && g_pool->outstanding == baseline + 1, "a drained block is handed out again");
         dealloc_raw_sized(again, sizes[0]);
         yia_pool_drain();
-        check(g_pool.outstanding == baseline, "and the count settles back");
+        check(g_pool->outstanding == baseline, "and the count settles back");
     }
 
     // ---- a worker allocates, this thread frees
@@ -384,7 +384,7 @@ void test_cross_thread()
 
         for (std::size_t i = 0; i < count; ++i) dealloc_raw_sized(blocks[i], sizes[i]);
         check(true, "freeing another thread's live blocks is safe");
-        check(g_pool.outstanding == baseline, "and none of it was charged to this thread");
+        check(g_pool->outstanding == baseline, "and none of it was charged to this thread");
     }
 
     // ---- a container built here, destroyed on a worker
@@ -392,15 +392,15 @@ void test_cross_thread()
         auto holder = std::make_unique<std::vector<int, Allocator<int>>>();
         for (int i = 0; i < 1000; ++i) holder->push_back(i);
 
-        const std::size_t charged = g_pool.outstanding;
+        const std::size_t charged = g_pool->outstanding;
         check(charged > baseline, "the vector's buffer is charged to this thread");
 
         std::thread worker([&] { holder.reset(); });        // the destructor runs over there
         worker.join();
 
-        check(g_pool.outstanding == charged, "destroying it on another thread charges nothing here");
+        check(g_pool->outstanding == charged, "destroying it on another thread charges nothing here");
         yia_pool_drain();
-        check(g_pool.outstanding == baseline, "yia_pool_drain() collects the buffer");
+        check(g_pool->outstanding == baseline, "yia_pool_drain() collects the buffer");
     }
 
     // ---- four threads at once, each freeing its neighbour's blocks
@@ -439,7 +439,7 @@ void test_cross_thread()
         for (auto &w : workers) w.join();
 
         check(true, "4 threads x 100 blocks, every block freed by a different thread");
-        check(g_pool.outstanding == baseline, "this thread's accounting never moved");
+        check(g_pool->outstanding == baseline, "this thread's accounting never moved");
     }
 }
 
