@@ -2,7 +2,6 @@
 #include "yia_malloc.h"
 
 #include <stdio.h>
-#include <assert.h>
 
 void *volatile g_arena = NULL;
 YiaSlot g_slot_table[YIA_SLOT_COUNT] = {0};

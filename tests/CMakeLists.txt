@@ -18,4 +18,8 @@ yia_add_executable(yialite_std_containers_tests yialite::core src/std_containers
 target_link_libraries(yialite_std_containers_tests PRIVATE Threads::Threads)
 yia_add_test(std_containers yialite_std_containers_tests)
 
+yia_add_executable(yialite_yia_malloc_tests yialite::core src/yia_malloc_tests.cpp)
+target_link_libraries(yialite_yia_malloc_tests PRIVATE Threads::Threads)
+yia_add_test(yia_malloc yialite_yia_malloc_tests)
+
 yia_add_executable(yialite_bench yialite::core src/bench.cpp)
