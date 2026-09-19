@@ -22,4 +22,8 @@ yia_add_executable(yialite_yia_malloc_tests yialite::core src/yia_malloc_tests.c
 target_link_libraries(yialite_yia_malloc_tests PRIVATE Threads::Threads)
 yia_add_test(yia_malloc yialite_yia_malloc_tests)
 
+yia_add_executable(yialite_pressure_tests yialite::core src/pressure_tests.cpp)
+target_link_libraries(yialite_pressure_tests PRIVATE Threads::Threads)
+yia_add_test(pressure yialite_pressure_tests)
+
 yia_add_executable(yialite_bench yialite::core src/bench.cpp)

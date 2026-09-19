@@ -365,7 +365,7 @@ void test_realloc()
             ok = false;
             break;
         }
-        ok &= verify(next, std::min(cur_n, want), 7);
+        ok &= verify(next, (std::min)(cur_n, want), 7);   // parens: windows.h defines min/max macros
         cur   = next;
         cur_n = want;
         fill(cur, cur_n, 7);
@@ -376,9 +376,10 @@ void test_realloc()
 
     void *big = yia_malloc(200000);
     fill(big, 200000, 3);
-    void *small = yia_realloc(big, 40000);
-    check(small != nullptr && verify(small, 40000, 3), "a 200 KB block shrunk to 40 KB keeps its prefix");
-    yia_free(small);
+    // "small" would be a macro under windows.h, hence "shrunk"
+    void *shrunk = yia_realloc(big, 40000);
+    check(shrunk != nullptr && verify(shrunk, 40000, 3), "a 200 KB block shrunk to 40 KB keeps its prefix");
+    yia_free(shrunk);
     check(g_pool->outstanding == baseline, "and the charge is gone");
 
     void *keep = yia_malloc(5000);
