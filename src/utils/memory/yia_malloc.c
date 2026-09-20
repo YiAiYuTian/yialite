@@ -350,6 +350,7 @@ bool yia_pool_init(void)
 
     g_pool->slot_index = idx;
     g_pool->slot_used = 0;
+    g_pool->outstanding = 0;
 
     YiaSlot *slot = &g_slot_table[idx];
     slot->retqueue = NULL;
@@ -361,20 +362,55 @@ bool yia_pool_init(void)
     slot->owner = (uint64_t)pthread_self();
 #endif
 
-    // init page (16(PAGE_STRIDE)...256(PAGE_STRIDE * YIA_SMALL_PAGE_COUNT))
+    /* // init page (16(PAGE_STRIDE)...256(PAGE_STRIDE * YIA_SMALL_PAGE_COUNT)) */
+    /* for (size_t i = 0; i < YIA_SMALL_PAGE_COUNT; ++i) */
+    /* { */
+    /*     YiaPage *p = &g_pool->pages[i]; */
+    /*     p->free_list = NULL; */
+    /*     p->block_size = YIA_SMALL_PAGE_STRIDE * (i + 1); */
+    /*     p->block_count = 256; */
+    /*     p->segment_count = 0; */
+    /*     if (!yia_page_carve(p)) */
+    /*     { */
+    /*         yia_slot_return(idx); */
+    /*         g_pool->slot_index = YIA_SLOT_INVALID_INDEX; */
+    /*         return false; */
+    /*     } */
+    /* } */
+
+    /* // init page (512...8192 (256 << 5)) */
+    /* size_t medium_size = YIA_SMALL_CUTOFF * 2; */
+    /* for (size_t i = YIA_SMALL_PAGE_COUNT; i < YIA_SMALL_PAGE_COUNT + YIA_MEDIUM_PAGE_COUNT; ++i) */
+    /* { */
+    /*     YiaPage *p = &g_pool->pages[i]; */
+    /*     p->free_list = NULL; */
+    /*     p->block_size = medium_size; */
+    /*     p->block_count = medium_size <= 2048 ? 256 : 256 * 1024 / medium_size; */
+    /*     p->segment_count = 0; */
+    /*     if (!yia_page_carve(p)) */
+    /*     { */
+    /*         yia_slot_return(idx); */
+    /*         g_pool->slot_index = YIA_SLOT_INVALID_INDEX; */
+    /*         return false; */
+    /*     } */
+    /*     medium_size *= 2; */
+    /* } */
+
+    /* // init large cache */
+    /* for (size_t i = 0; i < YIA_LARGE_BUCKET_COUNT; ++i) */
+    /* { */
+    /*     g_pool->large_cache.buckets[i] = NULL; */
+    /*     g_pool->large_cache.count[i] = 0; */
+    /*     g_pool->large_cache.total_bytes = 0; */
+    /* }       */
+
     for (size_t i = 0; i < YIA_SMALL_PAGE_COUNT; ++i)
     {
         YiaPage *p = &g_pool->pages[i];
-        p->free_list = NULL;
-        p->block_size = YIA_SMALL_PAGE_STRIDE * (i + 1);
-        p->block_count = 256;
+        p->free_list     = NULL;
+        p->block_size    = YIA_SMALL_PAGE_STRIDE * (i + 1);
+        p->block_count   = 256;
         p->segment_count = 0;
-        if (!yia_page_carve(p))
-        {
-            yia_slot_return(idx);
-            g_pool->slot_index = YIA_SLOT_INVALID_INDEX;
-            return false;
-        }
     }
 
     // init page (512...8192 (256 << 5))
@@ -382,16 +418,10 @@ bool yia_pool_init(void)
     for (size_t i = YIA_SMALL_PAGE_COUNT; i < YIA_SMALL_PAGE_COUNT + YIA_MEDIUM_PAGE_COUNT; ++i)
     {
         YiaPage *p = &g_pool->pages[i];
-        p->free_list = NULL;
-        p->block_size = medium_size;
-        p->block_count = medium_size <= 2048 ? 256 : 256 * 1024 / medium_size;
+        p->free_list     = NULL;
+        p->block_size    = medium_size;
+        p->block_count   = medium_size <= 2048 ? 256 : 256 * 1024 / medium_size;
         p->segment_count = 0;
-        if (!yia_page_carve(p))
-        {
-            yia_slot_return(idx);
-            g_pool->slot_index = YIA_SLOT_INVALID_INDEX;
-            return false;
-        }
         medium_size *= 2;
     }
 
@@ -401,7 +431,7 @@ bool yia_pool_init(void)
         g_pool->large_cache.buckets[i] = NULL;
         g_pool->large_cache.count[i] = 0;
         g_pool->large_cache.total_bytes = 0;
-    }      
+    }
 
     if (!yia_lifecycle_register())
     {
