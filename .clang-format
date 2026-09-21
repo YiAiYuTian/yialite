@@ -8,8 +8,8 @@ TabWidth: 4
 UseTab: Never
 ContinuationIndentWidth: 4
 ConstructorInitializerIndentWidth: 4
-AccessModifierOffset: -4          # `public:` at column 0, members indented by 4
-NamespaceIndentation: None        # namespace yialite { ... } at column 0
+AccessModifierOffset: -4
+NamespaceIndentation: None
 MaxEmptyLinesToKeep: 1
 KeepEmptyLinesAtTheStartOfBlocks: false
 
