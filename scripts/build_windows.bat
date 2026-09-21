@@ -10,14 +10,14 @@ rem      preset   configure preset from CMakePresets.json      (default: msvc)
 rem      config   Debug or Release - only meaningful for a multi-configuration
 rem               generator such as the Visual Studio one. The Ninja presets
 rem               fix the build type when they are configured, which is why
-rem               they come in pairs (mingw / mingw-release).  (default: Debug)
+rem               they come in pairs (gcc / gcc-release).  (default: Debug)
 rem      target   a single CMake target                        (default: all)
 rem
 rem  Examples
 rem      scripts\build_windows.bat
 rem      scripts\build_windows.bat msvc Release
 rem      scripts\build_windows.bat msvc Debug yialite_core
-rem      scripts\build_windows.bat mingw
+rem      scripts\build_windows.bat gcc
 rem ===========================================================================
 
 set "HERE=%~dp0"
@@ -44,7 +44,7 @@ findstr /b /c:"CMAKE_CONFIGURATION_TYPES:" "%BUILD_DIR%\CMakeCache.txt" >nul 2>&
 if errorlevel 1 set "MULTI="
 if not defined MULTI if /i not "%CONFIG%"=="Debug" (
     echo [warn] preset "%PRESET%" is single-config: --config %CONFIG% has no effect.
-    echo        Use a Release preset ^(e.g. mingw-release^) instead.
+    echo        Use a Release preset ^(e.g. gcc-release^) instead.
 )
 
 if "%TARGET%"=="" (

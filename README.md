@@ -11,7 +11,7 @@ at the learning stage.
 ## Building
 
 Needs CMake 3.21+ and a C++23 compiler (MSVC, GCC 13+ or Clang). Presets for
-`msvc`, `mingw` and `clang`, in both debug and release, live in
+`msvc`, `gcc` and `clang`, in both debug and release, live in
 `CMakePresets.json`.
 
 Windows:
@@ -31,7 +31,7 @@ scripts/test.sh
 ```
 
 Each accepts `[preset] [config] [target]` — for example
-`scripts\build_windows.bat mingw` or `scripts/build_linux.sh mingw-release`.
+`scripts\build_windows.bat gcc` or `scripts/build_linux.sh gcc-release`.
 
 Or straight through CMake:
 

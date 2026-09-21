@@ -5,13 +5,13 @@
 #
 #      scripts/run.sh [preset] [config] [sandbox args...]
 #
-#      preset   configure preset from CMakePresets.json    (default: mingw)
+#      preset   configure preset from CMakePresets.json    (default: gcc)
 #      config   Debug or Release                           (default: Debug)
 #
 #  Examples
 #      scripts/run.sh
-#      scripts/run.sh mingw-release
-#      scripts/run.sh mingw Debug --headless --frames=120
+#      scripts/run.sh gcc-release
+#      scripts/run.sh gcc Debug --headless --frames=120
 #
 #  The build runs first: launching a stale executable and debugging code that
 #  is not in it wastes more time than the build costs.
@@ -22,7 +22,7 @@ set -euo pipefail
 here="$(cd "$(dirname "$0")" && pwd)"
 cd "$here/.."
 
-preset="${1:-mingw}"
+preset="${1:-gcc}"
 config="${2:-Debug}"
 extra=("${@:3}")
 

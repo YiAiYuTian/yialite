@@ -39,28 +39,28 @@
     },
 
     {
-      "name": "mingw",
-      "displayName": "MinGW-w64 - Ninja, Debug (gcc and g++ must be on PATH)",
+      "name": "gcc",
+      "displayName": "GCC - Ninja, Debug (gcc/g++ must be on PATH: MinGW-w64 on Windows, system GCC on Linux)",
       "inherits": "ninja-base",
-      "binaryDir": "${sourceDir}/build/mingw",
+      "binaryDir": "${sourceDir}/build/gcc",
       "cacheVariables": {
         "CMAKE_BUILD_TYPE": "Debug",
         "CMAKE_C_COMPILER": "gcc",
         "CMAKE_CXX_COMPILER": "g++",
-        "CMAKE_INSTALL_PREFIX": "${sourceDir}/install/mingw"
+        "CMAKE_INSTALL_PREFIX": "${sourceDir}/install/gcc"
       }
     },
 
     {
-      "name": "mingw-release",
-      "displayName": "MinGW-w64 - Ninja, Release",
+      "name": "gcc-release",
+      "displayName": "GCC - Ninja, Release",
       "inherits": "ninja-base",
-      "binaryDir": "${sourceDir}/build/mingw-release",
+      "binaryDir": "${sourceDir}/build/gcc-release",
       "cacheVariables": {
         "CMAKE_BUILD_TYPE": "Release",
         "CMAKE_C_COMPILER": "gcc",
         "CMAKE_CXX_COMPILER": "g++",
-        "CMAKE_INSTALL_PREFIX": "${sourceDir}/install/mingw-release"
+        "CMAKE_INSTALL_PREFIX": "${sourceDir}/install/gcc-release"
       }
     },
 
@@ -105,13 +105,13 @@
       "jobs": 0
     },
     {
-      "name": "mingw",
-      "configurePreset": "mingw",
+      "name": "gcc",
+      "configurePreset": "gcc",
       "jobs": 0
     },
     {
-      "name": "mingw-release",
-      "configurePreset": "mingw-release",
+      "name": "gcc-release",
+      "configurePreset": "gcc-release",
       "jobs": 0
     },
     {
@@ -144,15 +144,15 @@
       }
     },
     {
-      "name": "mingw",
-      "configurePreset": "mingw",
+      "name": "gcc",
+      "configurePreset": "gcc",
       "output": {
         "outputOnFailure": true
       }
     },
     {
-      "name": "mingw-release",
-      "configurePreset": "mingw-release",
+      "name": "gcc-release",
+      "configurePreset": "gcc-release",
       "output": {
         "outputOnFailure": true
       }
