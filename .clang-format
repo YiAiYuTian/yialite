@@ -1,10 +1,82 @@
+Language: Cpp
 BasedOnStyle: LLVM
-BreakBeforeBraces: Allman
+Standard: Latest
+
+ColumnLimit: 0
 IndentWidth: 4
-ContinuationIndentWidth: 4
-IndentAccessModifiers: true
-AccessModifierOffset: 0
+TabWidth: 4
 UseTab: Never
-AlignTrailingComments: true
+ContinuationIndentWidth: 4
+ConstructorInitializerIndentWidth: 4
+AccessModifierOffset: -4          # `public:` at column 0, members indented by 4
+NamespaceIndentation: None        # namespace yialite { ... } at column 0
+MaxEmptyLinesToKeep: 1
+KeepEmptyLinesAtTheStartOfBlocks: false
+
+# -------------------------------------------------------------------- spacing
+PointerAlignment: Right
+ReferenceAlignment: Pointer
+SpaceAfterCStyleCast: false
+SpaceAfterTemplateKeyword: true
+SpaceBeforeParens: ControlStatements
+SpacesInParentheses: false
+SpacesInSquareBrackets: false
+SpacesInAngles: Never
+SpaceInEmptyBlock: false
+SpacesBeforeTrailingComments: 1
+AlignAfterOpenBracket: Align
+AlignOperands: AlignAfterOperator
+AlignTrailingComments: false
+AlignConsecutiveAssignments: false
+AlignConsecutiveDeclarations: false
+AlignConsecutiveMacros: None
+IndentExternBlock: NoIndent
+
+# --------------------------------------------------------------------- braces
+BreakBeforeBraces: Custom
 BraceWrapping:
+  AfterCaseLabel: true
+  AfterClass: true
   AfterControlStatement: Always
+  AfterEnum: true
+  AfterExternBlock: false
+  AfterFunction: true
+  AfterNamespace: true
+  AfterStruct: true
+  AfterUnion: true
+  BeforeCatch: true
+  BeforeElse: true
+  BeforeLambdaBody: false
+  BeforeWhile: false
+  IndentBraces: false
+  SplitEmptyFunction: true
+  SplitEmptyRecord: true
+  SplitEmptyNamespace: true
+
+# ----------------------------------------------------------------- one-liners
+AllowShortIfStatementsOnASingleLine: WithoutElse
+AllowShortLoopsOnASingleLine: false
+AllowShortFunctionsOnASingleLine: Inline
+AllowShortLambdasOnASingleLine: Inline
+AllowShortBlocksOnASingleLine: Never
+AllowShortCaseLabelsOnASingleLine: false
+AllowShortEnumsOnASingleLine: false
+AllowAllArgumentsOnNextLine: true
+AllowAllParametersOfDeclarationOnNextLine: true
+BinPackArguments: true
+BinPackParameters: true
+
+# --------------------------------------------------------------- declarations
+AlwaysBreakTemplateDeclarations: Yes
+BreakConstructorInitializers: BeforeColon
+PackConstructorInitializers: Never
+BreakInheritanceList: AfterColon
+IndentCaseLabels: false
+IndentAccessModifiers: false
+EmptyLineBeforeAccessModifier: Leave
+
+# -------------------------------------------------------------------- includes
+SortIncludes: Never
+IncludeBlocks: Preserve
+ReflowComments: true
+FixNamespaceComments: true

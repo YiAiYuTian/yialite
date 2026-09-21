@@ -1,0 +1,67 @@
+Checks: >
+  clang-analyzer-*,
+  bugprone-*,
+  performance-*,
+  portability-*,
+  misc-confusable-identifiers,
+  misc-misplaced-const,
+  misc-redundant-expression,
+  misc-static-assert,
+  misc-unused-parameters,
+  misc-unused-using-decls,
+  readability-const-return-type,
+  readability-container-size-empty,
+  readability-inconsistent-declaration-parameter-name,
+  readability-misleading-indentation,
+  readability-redundant-cstring-operation,
+  readability-redundant-declaration,
+  readability-redundant-member-init,
+  readability-redundant-string-c-str,
+  readability-simplify-boolean-expr,
+  modernize-use-nullptr,
+  modernize-use-override,
+  modernize-use-equals-delete,
+  -bugprone-branch-clone,
+  -bugprone-macro-parentheses,
+  -bugprone-implicit-widening-of-multiplication-result,
+  -clang-analyzer-security.insecureAPI.DeprecatedOrUnsafeBufferHandling,
+  -misc-include-cleaner,
+  -misc-non-private-member-variables-in-classes,
+  -misc-no-recursion,
+  -performance-enum-size,
+  -portability-avoid-pragma-once,
+  -readability-braces-around-statements,
+  -readability-identifier-length,
+  -readability-magic-numbers,
+  -readability-function-cognitive-complexity,
+  -readability-avoid-nested-conditional-operator,
+  -modernize-use-trailing-return-type,
+  -modernize-avoid-c-arrays,
+  -modernize-macro-to-enum,
+  -modernize-use-auto,
+  -modernize-use-designated-initializers
+
+HeaderFilterRegex: '.*[\\/]src[\\/].*'
+ExcludeHeaderFilterRegex: '.*[\\/]thirdparty[\\/].*'
+
+WarningsAsErrors: ''
+FormatStyle: file
+
+CheckOptions:
+  bugprone-reserved-identifier.AllowedIdentifiers: '_DEFAULT_SOURCE;_CRT_SECURE_NO_WARNINGS'
+
+  readability-identifier-naming.ClassCase: CamelCase
+  readability-identifier-naming.StructCase: CamelCase
+  readability-identifier-naming.EnumCase: CamelCase
+  readability-identifier-naming.EnumConstantCase: CamelCase
+  readability-identifier-naming.TypeAliasCase: lower_snake_case
+  readability-identifier-naming.FunctionCase: lower_snake_case
+  readability-identifier-naming.MethodCase: lower_snake_case
+  readability-identifier-naming.VariableCase: lower_snake_case
+  readability-identifier-naming.ParameterCase: lower_snake_case
+  readability-identifier-naming.MemberCase: lower_snake_case
+  readability-identifier-naming.MemberPrefix: 'm_'
+  readability-identifier-naming.GlobalVariableCase: lower_snake_case
+  readability-identifier-naming.GlobalVariablePrefix: 'g_'
+  readability-identifier-naming.MacroDefinitionCase: UPPER_CASE
+  readability-braces-around-statements.ShortStatementLines: 1

@@ -96,11 +96,11 @@ typedef struct YiaLargeCache
 #define YIA_ARENA_SIZE  (YIA_SLOT_SIZE * YIA_SLOT_COUNT)
 typedef struct YiaPool
 {
-    YiaPage pages[YIA_SMALL_PAGE_COUNT + YIA_MEDIUM_PAGE_COUNT];
-    YiaLargeCache large_cache;
-    int slot_index;
     size_t slot_used;
     size_t outstanding;
+    YiaLargeCache large_cache;
+    YiaPage pages[YIA_SMALL_PAGE_COUNT + YIA_MEDIUM_PAGE_COUNT];
+    int slot_index;
     bool inited;
 } YiaPool;
 

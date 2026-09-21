@@ -1,9 +1,34 @@
 CompileFlags:
-  CompilationDatabase: build/mingw
-  Add: [-Wall]
+  CompilationDatabase: build/gcc
+  Add: [-Wall, -Wextra, -I src]
+  Remove: [-mthreads, -municode, '-Wa,*']
+---
+If:
+  PathMatch: .*\.c$
+CompileFlags:
+  Add: [-std=c11]
+---
+If:
+  PathMatch: .*\.(cpp|cc|cxx|hpp)$
+CompileFlags:
+  Add: [-std=c++23]
+
 Diagnostics:
-  FunctionArgPlaceholders: true
+  UnusedIncludes: Strict
+  MissingIncludes: Strict
+
+Hover:
+  ShowAKA: Yes
+
 Completion:
   HeaderInsertion: Never
 InlayHints:
   Enabled: false
+  ParameterNames: Yes
+  DeducedTypes: Yes
+
+Style:
+  FallbackStyle: none
+
+Index:
+  Background: Build
