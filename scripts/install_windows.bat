@@ -12,7 +12,7 @@ rem
 rem  Examples
 rem      scripts\install_windows.bat
 rem      scripts\install_windows.bat msvc Release
-rem      scripts\install_windows.bat mingw
+rem      scripts\install_windows.bat gcc
 rem
 rem  Produces the same layout the presets point at, so a consumer project can
 rem  find it with:  set CMAKE_PREFIX_PATH=...\install\msvc

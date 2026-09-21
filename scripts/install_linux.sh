@@ -5,15 +5,15 @@
 #
 #      scripts/install_linux.sh [preset] [config]
 #
-#      preset   configure preset from CMakePresets.json    (default: mingw)
+#      preset   configure preset from CMakePresets.json    (default: gcc)
 #      config   Debug or Release                           (default: Debug)
 #
 #  Examples
 #      scripts/install_linux.sh
-#      scripts/install_linux.sh mingw-release
+#      scripts/install_linux.sh gcc-release
 #
 #  Produces the same layout the presets point at, so a consumer project can
-#  find it with:  cmake -DCMAKE_PREFIX_PATH=.../install/mingw ...
+#  find it with:  cmake -DCMAKE_PREFIX_PATH=.../install/gcc ...
 # ===========================================================================
 
 set -euo pipefail
@@ -21,7 +21,7 @@ set -euo pipefail
 here="$(cd "$(dirname "$0")" && pwd)"
 cd "$here/.."
 
-preset="${1:-mingw}"
+preset="${1:-gcc}"
 config="${2:-Debug}"
 prefix="$PWD/install/$preset"
 
