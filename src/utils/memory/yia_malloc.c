@@ -61,7 +61,6 @@ static DWORD g_fls_index = FLS_OUT_OF_INDEXES;
 
 static void CALLBACK yia_fls_dtor(PVOID data)
 {
-    yia_lifecycle_unregister();
     int idx = *(int *)data;
     if (idx == YIA_SLOT_INVALID_INDEX) return;
 
@@ -134,7 +133,6 @@ pthread_key_t  g_lifecycle_key = 0;
 
 static void yia_lifecycle_dtor(void *data)
 {
-    yia_lifecycle_unregister();
     int idx = *(int *)data;
     if (idx == YIA_SLOT_INVALID_INDEX) return;
 
@@ -504,6 +502,8 @@ void *yia_large_try_alloc(size_t round_up_size)
 {
     YiaLargeCache *c = &g_pool->large_cache;
     int idx = yia_ctz_u32((uint32_t)round_up_size) - YIA_LARGE_BUCKET_SHIFT;
+    if (idx < 0 || idx >= YIA_LARGE_BUCKET_COUNT) return NULL;
+
     YiaFreeNode *b = c->buckets[idx];
     if (b == NULL) return NULL;
 
@@ -517,6 +517,12 @@ void yia_large_free(void *p, size_t round_up_size)
 {
     YiaLargeCache *c = &g_pool->large_cache;
     int idx = yia_ctz_u32((uint32_t)round_up_size) - YIA_LARGE_BUCKET_SHIFT;
+    if (idx < 0 || idx >= YIA_LARGE_BUCKET_COUNT)
+    {
+        yia_os_free(p, round_up_size);
+        return;
+    }
+    
     YiaFreeNode *node = (YiaFreeNode *)p;
 
     node->next = c->buckets[idx];
